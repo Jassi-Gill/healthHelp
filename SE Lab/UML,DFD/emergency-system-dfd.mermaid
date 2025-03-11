@@ -1,0 +1,7 @@
+graph TD
+    U[Patient/User] -->|Emergency Request| ES[Emergency System]
+    D[Driver] -->|Location Updates| ES
+    H[Hospital] -->|Availability Status| ES
+    ES -->|Request Status| U
+    ES -->|Navigation Data| D
+    ES -->|Patient Details| H

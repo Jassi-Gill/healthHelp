@@ -1,0 +1,47 @@
+graph TD
+    %% External Entities
+    Patient([Patient])
+    Driver([Driver])
+    Hospital([Hospital])
+    Traffic([Traffic System])
+
+    %% Processes
+    P1((1.0<br/>Emergency<br/>Request<br/>Processing))
+    P2((2.0<br/>Dispatch<br/>Management))
+    P3((3.0<br/>Route<br/>Optimization))
+    P4((4.0<br/>Hospital<br/>Management))
+
+    %% Data Stores
+    DS1[(Patient<br/>Records)]
+    DS2[(Emergency<br/>Requests)]
+    DS3[(Vehicle<br/>Status)]
+    DS4[(Driver<br/>Records)]
+    DS5[(Hospital<br/>Records)]
+
+    %% Data Flows
+    Patient -->|Submit Emergency<br/>Request| P1
+    P1 -->|Store Request| DS2
+    P1 -->|Patient Info| DS1
+    
+    DS2 -->|Active Requests| P2
+    DS3 -->|Available Vehicles| P2
+    DS4 -->|Driver Status| P2
+    
+    P2 -->|Assign Request| Driver
+    Driver -->|Location Updates| P2
+    P2 -->|Update Status| DS2
+    
+    P2 -->|Route Request| P3
+    Traffic -->|Traffic Data| P3
+    P3 -->|Optimized Route| Driver
+    
+    DS5 -->|Hospital Status| P4
+    P4 -->|Patient Assignment| Hospital
+    Hospital -->|Availability Updates| P4
+    
+    P2 -->|Emergency Details| P4
+    P4 -->|Update Records| DS5
+    
+    %% Status Updates to Patient
+    P2 -->|Request Status| Patient
+    P4 -->|Hospital Details| Patient
