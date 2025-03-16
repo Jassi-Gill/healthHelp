@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    "base.apps.BaseConfig",
+    "base.apps.BaseConfig",   # added
+    'rest_framework',   # added
+    'corsheaders',  # added
 ]
 
 AUTH_USER_MODEL = "base.User"  # added
@@ -50,7 +52,17 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',    # added
 ]
+
+# Allow React (Frontend) to Access Django (Backend)         # added
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React Development Server
+]
+
+# OR (to allow all origins for development)     # added
+CORS_ALLOW_ALL_ORIGINS = True  
+
 
 ROOT_URLCONF = 'healthHelp.urls'
 
