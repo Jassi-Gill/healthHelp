@@ -20,13 +20,14 @@ import HospitalDashboard from './hospitalDashboard';
 import PatientDashboard from './patientDashboard';
 import DriverDashboard from './driverDashboard';
 import PoliceDashboard from './policeDashboard';
+import SignupPage from './SignupPage'; // Import the new SignupPage component
 
 const LoginPage = () => {
   const [userType, setUserType] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'patientDashboard', 'hospitalDashboard', etc.
+  const [currentView, setCurrentView] = useState('login'); // 'login', 'signup', 'patientDashboard', 'hospitalDashboard', etc.
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -41,6 +42,8 @@ const LoginPage = () => {
 
   const renderDashboard = () => {
     switch (currentView) {
+      case 'signup':
+        return <SignupPage goToLogin={() => setCurrentView('login')} />;
       case 'patientDashboard':
         return <PatientDashboard goBack={() => setCurrentView('login')} />;
       case 'driverDashboard':
@@ -157,7 +160,7 @@ const LoginPage = () => {
               </Link>
             </Grid>
             <Grid item>
-              <Link href="#" variant="body2">
+              <Link href="#" variant="body2" onClick={() => setCurrentView('signup')}>
                 {"Don't have an account? Sign Up"}
               </Link>
             </Grid>
@@ -216,8 +219,8 @@ const LoginPage = () => {
     );
   };
 
-  // Determine if we're showing a dashboard or the login form
-  const isDashboardView = currentView !== 'login';
+  // Determine if we're showing a dashboard or the login/signup form
+  const isDashboardView = !['login', 'signup'].includes(currentView);
 
   return (
     <Container 
