@@ -10,7 +10,8 @@ import {
     TextField,
     Typography,
     Alert,
-    AlertTitle
+    AlertTitle,
+    CircularProgress
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
@@ -21,10 +22,13 @@ const SignupPage = ({ goToLogin }) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(''); // Clear any previous errors
+        setError('');
+        setSuccess('');
 
         // Basic validation
         if (password !== confirmPassword) {
@@ -32,13 +36,46 @@ const SignupPage = ({ goToLogin }) => {
             return;
         }
 
-        // Here you would typically integrate with your Django backend
-        console.log('Signup attempt:', { userType, email, username, password });
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters long');
+            return;
+        }
 
-        // Redirect to login after successful signup
-        // This is where you'd handle the API response
-        // If signup is successful, you can redirect to login
-        // goToLogin();
+        // Prepare data for API
+        const userData = {
+            username,
+            email,
+            password,
+            user_type: userType
+        };
+
+        try {
+            setIsLoading(true);
+            const response = await fetch('http://127.0.0.1:8000/api/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || JSON.stringify(data));
+            }
+
+            setSuccess('Registration successful! You can now log in.');
+            setTimeout(() => {
+                goToLogin();
+            }, 2000); // Redirect after 2 seconds
+
+        } catch (error) {
+            console.error('Signup error:', error);
+            setError(error.message || 'Registration failed. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -159,13 +196,25 @@ const SignupPage = ({ goToLogin }) => {
                         </Alert>
                     )}
 
+                    {success && (
+                        <Alert severity="success" sx={{ mt: 2 }}>
+                            <AlertTitle>Success</AlertTitle>
+                            {success}
+                        </Alert>
+                    )}
+
                     <Button
                         type="submit"
                         fullWidth
                         variant="contained"
                         sx={{ mt: 3, mb: 2 }}
+                        disabled={isLoading}
                     >
-                        Sign Up as {userType.charAt(0).toUpperCase() + userType.slice(1)}
+                        {isLoading ? (
+                            <CircularProgress size={24} />
+                        ) : (
+                            `Sign Up as ${userType.charAt(0).toUpperCase() + userType.slice(1)}`
+                        )}
                     </Button>
 
                     <Grid container justifyContent="flex-end">
