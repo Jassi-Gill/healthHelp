@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -13,31 +13,112 @@ import {
   Avatar,
   Alert,
   AlertTitle,
-  CssBaseline
+  CssBaseline,
+  CircularProgress
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import HospitalDashboard from './hospitalDashboard';
 import PatientDashboard from './patientDashboard';
 import DriverDashboard from './driverDashboard';
 import PoliceDashboard from './policeDashboard';
-import SignupPage from './SignupPage'; // Import the new SignupPage component
+import SignupPage from './SignupPage';
 
 const LoginPage = () => {
   const [userType, setUserType] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'signup', 'patientDashboard', 'hospitalDashboard', etc.
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentView, setCurrentView] = useState('login');
+  const [userData, setUserData] = useState(null);
+  const [authTokens, setAuthTokens] = useState(null);
 
-  const handleSubmit = (e) => {
+  // Check for existing login session on component mount
+  useEffect(() => {
+    const storedUserData = localStorage.getItem('userData');
+    const storedTokens = localStorage.getItem('authTokens');
+    const storedUserType = localStorage.getItem('userType');
+
+    if (storedUserData && storedTokens && storedUserType) {
+      setUserData(JSON.parse(storedUserData));
+      setAuthTokens(JSON.parse(storedTokens));
+      setCurrentView(`${storedUserType}Dashboard`);
+    }
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically integrate with your Django backend
-    setError(''); // Clear any previous errors
-    console.log('Login attempt:', { userType, email, password });
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Invalid email or password');
+        } else if (response.status === 404) {
+          throw new Error('Account not found');
+        }
+        throw new Error(data.detail || 'Login failed');
+      }
+
+      const validUserTypes = ['patient', 'driver', 'hospital', 'police'];
+      if (!validUserTypes.includes(data.user_type)) {
+        throw new Error('Invalid user type received');
+      }
+
+      localStorage.setItem('authTokens', JSON.stringify(data.tokens));
+      localStorage.setItem('userData', JSON.stringify(data.user));
+      localStorage.setItem('userType', data.user_type);
+
+      setAuthTokens(data.tokens);
+      setUserData(data.user);
+      setCurrentView(`${data.user_type}Dashboard`);
+      setEmail('');
+      setPassword('');
+
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDashboardAccess = (dashboardType) => {
-    setCurrentView(dashboardType);
+  // Fix in useEffect
+  useEffect(() => {
+    const storedUserData = localStorage.getItem('userData');
+    const storedTokens = localStorage.getItem('authTokens'); // Fixed key
+    const storedUserType = localStorage.getItem('userType');
+
+    if (storedUserData && storedTokens && storedUserType) {
+      setUserData(JSON.parse(storedUserData));
+      setAuthTokens(JSON.parse(storedTokens));
+      setCurrentView(`${storedUserType}Dashboard`);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    // Clear all stored data
+    localStorage.removeItem('authTokens');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('userType');
+
+    setAuthTokens(null);
+    setUserData(null);
+    setCurrentView('login');
   };
 
   const renderDashboard = () => {
@@ -45,13 +126,29 @@ const LoginPage = () => {
       case 'signup':
         return <SignupPage goToLogin={() => setCurrentView('login')} />;
       case 'patientDashboard':
-        return <PatientDashboard goBack={() => setCurrentView('login')} />;
+        return <PatientDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
       case 'driverDashboard':
-        return <DriverDashboard goBack={() => setCurrentView('login')} />;
+        return <DriverDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
       case 'hospitalDashboard':
-        return <HospitalDashboard goBack={() => setCurrentView('login')} />;
+        return <HospitalDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
       case 'policeDashboard':
-        return <PoliceDashboard goBack={() => setCurrentView('login')} />;
+        return <PoliceDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
       default:
         return renderLoginForm();
     }
@@ -77,44 +174,6 @@ const LoginPage = () => {
           Login to access your dashboard
         </Typography>
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-          <Grid container spacing={2} mb={2}>
-            <Grid item xs={6}>
-              <Button
-                fullWidth
-                variant={userType === 'patient' ? 'contained' : 'outlined'}
-                onClick={() => setUserType('patient')}
-              >
-                Patient
-              </Button>
-            </Grid>
-            <Grid item xs={6}>
-              <Button
-                fullWidth
-                variant={userType === 'driver' ? 'contained' : 'outlined'}
-                onClick={() => setUserType('driver')}
-              >
-                Driver
-              </Button>
-            </Grid>
-            <Grid item xs={6}>
-              <Button
-                fullWidth
-                variant={userType === 'hospital' ? 'contained' : 'outlined'}
-                onClick={() => setUserType('hospital')}
-              >
-                Hospital
-              </Button>
-            </Grid>
-            <Grid item xs={6}>
-              <Button
-                fullWidth
-                variant={userType === 'police' ? 'contained' : 'outlined'}
-                onClick={() => setUserType('police')}
-              >
-                Police
-              </Button>
-            </Grid>
-          </Grid>
           <TextField
             margin="normal"
             required
@@ -150,8 +209,13 @@ const LoginPage = () => {
             fullWidth
             variant="contained"
             sx={{ mt: 3, mb: 2 }}
+            disabled={isLoading}
           >
-            Login as {userType.charAt(0).toUpperCase() + userType.slice(1)}
+            {isLoading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              "Login"
+            )}
           </Button>
           <Grid container>
             <Grid item xs>
@@ -165,55 +229,58 @@ const LoginPage = () => {
               </Link>
             </Grid>
           </Grid>
-          
-          {/* Quick Access Dashboard Buttons */}
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" align="center" gutterBottom>
-              Quick Dashboard Access (No Authentication)
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleDashboardAccess('patientDashboard')}
-                >
-                  Patient Dashboard
-                </Button>
+
+          {/* Quick Access Dashboard Buttons - For development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" align="center" gutterBottom>
+                Quick Dashboard Access (Dev Only)
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('patientDashboard')}
+                  >
+                    Patient Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('driverDashboard')}
+                  >
+                    Driver Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('hospitalDashboard')}
+                  >
+                    Hospital Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('policeDashboard')}
+                  >
+                    Police Dashboard
+                  </Button>
+                </Grid>
               </Grid>
-              <Grid item xs={6}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleDashboardAccess('driverDashboard')}
-                >
-                  Driver Dashboard
-                </Button>
-              </Grid>
-              <Grid item xs={6}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleDashboardAccess('hospitalDashboard')}
-                >
-                  Hospital Dashboard
-                </Button>
-              </Grid>
-              <Grid item xs={6}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleDashboardAccess('policeDashboard')}
-                >
-                  Police Dashboard
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          )}
+
         </Box>
       </Box>
     );
@@ -223,10 +290,10 @@ const LoginPage = () => {
   const isDashboardView = !['login', 'signup'].includes(currentView);
 
   return (
-    <Container 
-      component="main" 
-      maxWidth={isDashboardView ? "xl" : "xs"} // Use full width for dashboards
-      disableGutters={isDashboardView} // Remove padding for dashboards
+    <Container
+      component="main"
+      maxWidth={isDashboardView ? "xl" : "xs"}
+      disableGutters={isDashboardView}
       sx={{
         width: '100%',
         height: '100vh',
@@ -235,16 +302,16 @@ const LoginPage = () => {
     >
       <CssBaseline />
       {renderDashboard()}
-      
-      {/* Back button for dashboards */}
+
+      {/* Logout button for dashboards */}
       {isDashboardView && (
-        <Box sx={{ position: 'absolute', top: 16, left: 16 }}>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={() => setCurrentView('login')}
+        <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleLogout}
           >
-            Back to Login
+            Logout
           </Button>
         </Box>
       )}

@@ -10,8 +10,36 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    user_type = models.CharField(max_length=10, choices=[('patient', 'Patient'), ('driver', 'Driver'), ('hospital', 'Hospital'), ('police', 'Police')], default='patient')
+    
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
+
+class Patient(User):
+    address = models.TextField(blank=True, null=True)
+    medical_history = models.TextField(blank=True, null=True)
+    insurance_details = models.JSONField(blank=True, null=True)
+
+class Driver(User):
+    license_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    license_expiry = models.DateField(blank=True, null=True)
+    status = models.CharField(max_length=10, choices=[('available', 'Available'), ('busy', 'Busy'), ('offline', 'Offline')], default='offline')
+    rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
+
+class Hospital(User):
+    name = models.CharField(max_length=100)
+    address = models.TextField()
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    capacity = models.IntegerField()
+    emergency_capacity = models.IntegerField()
+    hospital_active = models.BooleanField(default=True)  
+    hospital_email = models.EmailField(unique=True, blank=True, null=True)  
+
+class Police(User):
+    badge_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    station_name = models.CharField(max_length=255, blank=True, null=True)
+    rank = models.CharField(max_length=50)
+
 
 class EmergencyContact(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -25,17 +53,6 @@ class MobileNumber(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mobile_numbers')
     mobile_number = models.CharField(max_length=20)
     is_primary = models.BooleanField(default=False)
-
-class Patient(User):
-    address = models.TextField(blank=True, null=True)
-    medical_history = models.TextField(blank=True, null=True)
-    insurance_details = models.JSONField(blank=True, null=True)
-
-class Driver(User):
-    license_number = models.CharField(max_length=50, unique=True)
-    license_expiry = models.DateField()
-    status = models.CharField(max_length=10, choices=[('available', 'Available'), ('busy', 'Busy'), ('offline', 'Offline')], default='offline')
-    rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
 
 class Vehicle(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -57,15 +74,6 @@ class DriverVehicleAssignment(models.Model):
     class Meta:
         unique_together = ('vehicle', 'is_current')
 
-class Hospital(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100)
-    email = models.EmailField(unique=True, blank=True, null=True)
-    address = models.TextField()
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    capacity = models.IntegerField()
-    emergency_capacity = models.IntegerField()
-    is_active = models.BooleanField(default=True)
 
 class HospitalLocation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
