@@ -125,3 +125,30 @@ class VehicleLocationHistory(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     speed = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     heading = models.IntegerField(blank=True, null=True)
+
+
+class Location(models.Model):
+    name = models.CharField(max_length=255)  # Human-readable address
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+
+    def __str__(self):
+        return self.name
+
+class Trip(models.Model):
+    name = models.CharField(max_length=100)
+    start_location = models.ForeignKey(Location, related_name='start_trips', on_delete=models.CASCADE)
+    end_location = models.ForeignKey(Location, related_name='end_trips', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class TripStatus(models.Model):
+    trip = models.OneToOneField(Trip, on_delete=models.CASCADE)
+    current_latitude = models.FloatField(null=True, blank=True)
+    current_longitude = models.FloatField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Status for {self.trip.name}"
