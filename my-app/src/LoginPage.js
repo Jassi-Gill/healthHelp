@@ -22,6 +22,8 @@ import PatientDashboard from './patientDashboard';
 import DriverDashboard from './driverDashboard';
 import PoliceDashboard from './policeDashboard';
 import SignupPage from './SignupPage';
+import MapNav from './mapNav';
+
 
 const LoginPage = () => {
   const [userType, setUserType] = useState('patient');
@@ -149,6 +151,12 @@ const LoginPage = () => {
           tokens={authTokens}
           logout={handleLogout}
         />;
+      case 'mapNav':
+        return <MapNav
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
       default:
         return renderLoginForm();
     }
@@ -245,6 +253,16 @@ const LoginPage = () => {
                     onClick={() => setCurrentView('patientDashboard')}
                   >
                     Patient Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('mapNav')}
+                  >
+                    MAAPPPYYY Dashboard
                   </Button>
                 </Grid>
                 <Grid item xs={6}>
