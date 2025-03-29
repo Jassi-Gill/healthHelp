@@ -1,52 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import {
+  AppBar,
+  Avatar,
+  Box,
+  Button,
   Card,
   CardContent,
   CardHeader,
-  Typography,
-  Button,
-  Box,
-  Grid,
   Container,
-  AppBar,
-  Toolbar,
+  Grid,
   IconButton,
-  Avatar,
   Table,
+  TableBody,
+  TableCell,
   TableHead,
   TableRow,
-  TableCell,
-  TableBody
+  Toolbar,
+  Typography
 } from '@mui/material';
 import {
+  LocalHospital as HospitalIcon,
+  Notifications as BellIcon,
+  Person as UserIcon,
+  ReportProblem as AlertCircleIcon,
   People as UsersIcon,
   AccessTime as ClockIcon,
   LocationOn as MapPinIcon,
-  Notifications as BellIcon,
-  CalendarToday as CalendarIcon,
-  Person as UserIcon,
-  Fullscreen as MaximizeIcon,
   BarChart as BarChartIcon,
   Phone as PhoneIcon,
-  ReportProblem as AlertCircleIcon,
-  LocalHospital as HospitalIcon,
   Directions as NavigationIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import MapDetails from './mapdetails';
+import ViewAllResources from './ViewAllResources';
 
 const HospitalDashboard = () => {
   const [activeEmergencies, setActiveEmergencies] = useState([]);
   const [navigatingEmergency, setNavigatingEmergency] = useState(null);
+  const [showResources, setShowResources] = useState(false);
 
   useEffect(() => {
     const fetchEmergencies = () => {
       axios
         .get('http://localhost:8000/api/emergency-requests/', {
-          params: { status: 'created,in_progress' } // Filter for active emergencies
+          params: { status: 'created,in_progress' }
         })
         .then(response => {
-          // Transform data to match expected structure exactly like Police Dashboard
           const transformedEmergencies = response.data.map(emergency => ({
             id: emergency.id,
             start_location: {
@@ -69,8 +68,9 @@ const HospitalDashboard = () => {
           console.error('Error fetching active emergencies:', error);
         });
     };
+
     fetchEmergencies();
-    const interval = setInterval(fetchEmergencies, 10000); // Poll every 10 seconds
+    const interval = setInterval(fetchEmergencies, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -82,9 +82,23 @@ const HospitalDashboard = () => {
     setNavigatingEmergency(null);
   };
 
+  // Updated navigation to View All Resources page 
+  const goToViewAllResources = () => {
+    setShowResources(true);
+  };
+
+  // Function to return to dashboard from resources view
+  const goBackToDashboard = () => {
+    setShowResources(false);
+  };
+
+  // If viewing resources, render the resources component instead of dashboard
+  if (showResources) {
+    return <ViewAllResources onGoBack={goBackToDashboard} />;
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.100' }}>
-      {/* Top Navigation */}
       <AppBar position="static">
         <Toolbar>
           <HospitalIcon sx={{ mr: 2, color: 'red' }} />
@@ -103,16 +117,19 @@ const HospitalDashboard = () => {
       {navigatingEmergency ? (
         <MapDetails emergency={navigatingEmergency} onClose={handleCloseMap} />
       ) : (
-        <Container sx={{ py: 6 }}>
-          {/* Emergency Status Overview */}
-          <Grid container spacing={4} mb={6}>
+        <Container sx={{ py: 4 }}>
+          <Grid container spacing={4} sx={{ mb: 4 }}>
             <Grid item xs={12} md={6} lg={3}>
               <Card>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Box>
-                      <Typography variant="body2" color="textSecondary">Active Emergencies</Typography>
-                      <Typography variant="h4" color="error">{activeEmergencies.length}</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Active Emergencies
+                      </Typography>
+                      <Typography variant="h4" color="error">
+                        {activeEmergencies.length}
+                      </Typography>
                     </Box>
                     <AlertCircleIcon color="error" fontSize="large" />
                   </Box>
@@ -124,8 +141,12 @@ const HospitalDashboard = () => {
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Box>
-                      <Typography variant="body2" color="textSecondary">Available Ambulances</Typography>
-                      <Typography variant="h4" color="success">8</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Available Ambulances
+                      </Typography>
+                      <Typography variant="h4" color="success">
+                        8
+                      </Typography>
                     </Box>
                     <HospitalIcon color="success" fontSize="large" />
                   </Box>
@@ -137,8 +158,12 @@ const HospitalDashboard = () => {
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Box>
-                      <Typography variant="body2" color="textSecondary">Uber/Ola Partners</Typography>
-                      <Typography variant="h4" color="primary">15</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Uber/Ola Partners
+                      </Typography>
+                      <Typography variant="h4" color="primary">
+                        15
+                      </Typography>
                     </Box>
                     <UsersIcon color="primary" fontSize="large" />
                   </Box>
@@ -150,8 +175,12 @@ const HospitalDashboard = () => {
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Box>
-                      <Typography variant="body2" color="textSecondary">Avg Response Time</Typography>
-                      <Typography variant="h4" color="secondary">4.2m</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Avg Response Time
+                      </Typography>
+                      <Typography variant="h4" color="secondary">
+                        4.2m
+                      </Typography>
                     </Box>
                     <ClockIcon color="secondary" fontSize="large" />
                   </Box>
@@ -160,14 +189,16 @@ const HospitalDashboard = () => {
             </Grid>
           </Grid>
 
-          {/* Main Grid */}
           <Grid container spacing={6}>
-            {/* Live Emergency Requests */}
             <Grid item xs={12} lg={8}>
               <Card>
                 <CardHeader
                   title={
-                    <Typography variant="h6" component="div" sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography
+                      variant="h6"
+                      component="div"
+                      sx={{ display: 'flex', alignItems: 'center' }}
+                    >
                       <AlertCircleIcon sx={{ mr: 2, color: 'red' }} />
                       Live Emergency Requests
                     </Typography>
@@ -195,7 +226,6 @@ const HospitalDashboard = () => {
                                 variant="contained"
                                 color="primary"
                                 startIcon={<NavigationIcon />}
-                                sx={{ mt: 1 }}
                                 onClick={() => handleNavigate(emergency)}
                               >
                                 Navigate
@@ -209,44 +239,46 @@ const HospitalDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Response Time Chart */}
               <Card sx={{ mt: 6 }}>
                 <CardHeader
                   title={
-                    <Typography variant="h6" component="div" sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography
+                      variant="h6"
+                      component="div"
+                      sx={{ display: 'flex', alignItems: 'center' }}
+                    >
                       <BarChartIcon sx={{ mr: 2 }} />
                       Response Time Analytics
                     </Typography>
                   }
                 />
                 <CardContent>
-                  <Box sx={{ height: 256, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}>
+                  <Box
+                    sx={{ height: 256, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}
+                  >
                     Response time chart will be displayed here
                   </Box>
                 </CardContent>
               </Card>
             </Grid>
 
-            {/* Right Sidebar */}
             <Grid item xs={12} lg={4}>
-              {/* Quick Actions */}
-              <Card>
+              <Card sx={{ mb: 4 }}>
                 <CardHeader title="Quick Actions" />
                 <CardContent>
-                  <Button variant="contained" color="error" fullWidth startIcon={<PhoneIcon />}>
+                  <Button variant="contained" color="error" fullWidth startIcon={<PhoneIcon />} sx={{ mb: 2 }}>
                     Dispatch Ambulance
                   </Button>
-                  <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+                  <Button variant="contained" color="primary" fullWidth sx={{ mb: 2 }}>
                     Contact Traffic Police
                   </Button>
-                  <Button variant="contained" fullWidth sx={{ mt: 2 }}>
+                  <Button variant="contained" fullWidth onClick={goToViewAllResources}>
                     View All Resources
                   </Button>
                 </CardContent>
               </Card>
 
-              {/* Available Resources */}
-              <Card sx={{ mt: 6 }}>
+              <Card>
                 <CardHeader title="Available Resources" />
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
