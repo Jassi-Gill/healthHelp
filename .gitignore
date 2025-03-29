@@ -1,3 +1,4 @@
 healthHelp/venv
 
 healthHelp/db.sqlite3
+healthHelp/.env
