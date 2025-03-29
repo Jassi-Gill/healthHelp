@@ -1,11 +1,20 @@
 import React from 'react';
-import LoginPage from './LoginPage';
-import HospitalDashboard from './hospitalDashboard';
+import { LoadScript } from '@react-google-maps/api';
 import PatientDashboard from './patientDashboard';
-import DriverDashboard from './driverDashboard';
+import PoliceDashboard from './policeDashboard';
+import LoginPage from './LoginPage';
+
+const libraries = ['places'];
 
 function App() {
-  return <LoginPage />;
+  return (
+    <LoadScript
+      googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
+      libraries={libraries}
+    >
+      <LoginPage />
+    </LoadScript>
+  );
 }
 
 export default App;

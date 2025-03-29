@@ -27,6 +27,9 @@
 .App-link {
   color: #61dafb;
 }
+.pac-container {
+  z-index: 2000 !important;
+}
 
 @keyframes App-logo-spin {
   from {

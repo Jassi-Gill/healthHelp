@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -28,9 +28,10 @@ import {
   LocationOn as MapPinIcon,
   History as HistoryIcon,
   LocalHospital as HospitalIcon,
-  CalendarToday as CalendarIcon,
-  Settings as SettingsIcon
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material';
+import { StandaloneSearchBox } from '@react-google-maps/api';
+import axios from 'axios';
 import EmergencyDetailsModal from './emergencyDetailsModal';
 import EmergencyAmbulanceCalling from './emergencyAmbulanceCalling';
 
@@ -39,8 +40,24 @@ const PatientDashboard = ({ goBack }) => {
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [showEmergencyDetails, setShowEmergencyDetails] = useState(false);
   const [showEmergencyCalling, setShowEmergencyCalling] = useState(false);
+  const [startSearchBox, setStartSearchBox] = useState(null);
+  const [destinationSearchBox, setDestinationSearchBox] = useState(null);
+  const [startLocation, setStartLocation] = useState(null);
+  const [destinationLocation, setDestinationLocation] = useState(null);
+  const [loadingCurrentLocation, setLoadingCurrentLocation] = useState(false);
+  const [emergencyRequest, setEmergencyRequest] = useState(null);
+  useEffect(() => {
+    if (showEmergencyForm) {
+      const style = document.createElement('style');
+      style.textContent = '.pac-container { z-index: 1400 !important; }';
+      document.head.appendChild(style);
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, [showEmergencyForm]);
 
-  // Sample history data - would come from your backend
+  // Sample emergency history data (replace with backend data)
   const emergencyHistory = [
     {
       id: 1,
@@ -60,16 +77,129 @@ const PatientDashboard = ({ goBack }) => {
     }
   ];
 
+  // Handle clicking an emergency history entry
   const handleEmergencyClick = (emergency) => {
     setSelectedEmergency(emergency);
     setShowEmergencyDetails(true);
   };
 
-  const handleEmergencyCallRequest = () => {
-    setShowEmergencyForm(false);
-    setShowEmergencyCalling(true);
+  // Load handlers for search boxes
+  const onStartLoad = (ref) => setStartSearchBox(ref);
+  const onDestinationLoad = (ref) => setDestinationSearchBox(ref);
+
+  // Handle place selection for start location
+  const onStartPlacesChanged = () => {
+    if (startSearchBox) {
+      const places = startSearchBox.getPlaces();
+      if (places.length > 0) {
+        const place = places[0];
+        setStartLocation({
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          name: place.formatted_address
+        });
+      }
+    }
   };
 
+  // Handle place selection for destination
+  const onDestinationPlacesChanged = () => {
+    if (destinationSearchBox) {
+      const places = destinationSearchBox.getPlaces();
+      if (places.length > 0) {
+        const place = places[0];
+        setDestinationLocation({
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          name: place.formatted_address
+        });
+      }
+    }
+  };
+
+  // Handle "Use Current Location" button
+  const handleUseCurrentLocation = () => {
+    if (navigator.geolocation) {
+      setLoadingCurrentLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode(
+            { location: { lat: position.coords.latitude, lng: position.coords.longitude } },
+            (results, status) => {
+              if (status === 'OK' && results[0]) {
+                setStartLocation({
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude,
+                  name: results[0].formatted_address
+                });
+              } else {
+                setStartLocation({
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude,
+                  name: 'Current Location'
+                });
+              }
+              setLoadingCurrentLocation(false);
+            }
+          );
+        },
+        (error) => {
+          console.error('Error getting current location:', error);
+          alert('Unable to fetch current location. Please ensure location services are enabled.');
+          setLoadingCurrentLocation(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      alert('Geolocation is not supported by this browser.');
+    }
+  };
+
+  // Handle emergency call request
+  const handleEmergencyCallRequest = (type) => {
+    if (!startLocation || !destinationLocation) {
+      alert('Please select both start and destination locations.');
+      return;
+    }
+
+    axios
+      .post(
+        'http://localhost:8000/api/emergency-requests/',
+        {
+          start_location_latitude: startLocation.lat,
+          start_location_longitude: startLocation.lng,
+          start_location_name: startLocation.name,
+          end_location_latitude: destinationLocation.lat,
+          end_location_longitude: destinationLocation.lng,
+          end_location_name: destinationLocation.name,
+          emergency_type: type,  // 'critical' or 'non-critical'
+        }
+      )
+      .then((response) => {
+        setShowEmergencyForm(false);
+        setShowEmergencyCalling(true);
+        setStartLocation(null);
+        setDestinationLocation(null);
+        setEmergencyRequest(response.data);
+      })
+      .catch((error) => {
+        console.error('Error requesting emergency service:', error);
+        if (error.response) {
+          if (error.response.status === 401) {
+            alert('Unauthorized request. Please log in if required.');
+          } else if (error.response.status === 400) {
+            alert('Invalid request data: ' + JSON.stringify(error.response.data));
+          } else {
+            alert('Failed to request emergency service. Please try again.');
+          }
+        } else {
+          alert('Network error. Please check your connection.');
+        }
+      });
+  };
+
+  // Close emergency calling dialog
   const handleCloseEmergencyCalling = () => {
     setShowEmergencyCalling(false);
   };
@@ -120,22 +250,66 @@ const PatientDashboard = ({ goBack }) => {
           aria-labelledby="emergency-form-title"
           aria-describedby="emergency-form-description"
         >
-          <Paper sx={{ p: 4, maxWidth: 400, mx: 'auto', mt: 10 }}>
+          <Paper sx={{
+            p: 4,
+            maxWidth: 600,
+            mx: 'auto',
+            mt: 10,
+            position: 'relative',
+            zIndex: 1301 // Ensure modal content is above backdrop
+          }}>
             <Typography id="emergency-form-title" variant="h6" component="h2">
               Request Emergency Service
             </Typography>
             <Box mt={2}>
-              <Box display="flex" alignItems="center" mb={2}>
-                <MapPinIcon sx={{ mr: 2, color: 'grey.500' }} />
-                <Typography>Current Location: 123 Emergency St</Typography>
+              <Typography variant="subtitle1">Start Location</Typography>
+              <Box display="flex" alignItems="center">
+                <StandaloneSearchBox onLoad={onStartLoad} onPlacesChanged={onStartPlacesChanged}>
+                  <input
+                    type="text"
+                    placeholder="Enter start location"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      boxSizing: 'border-box',
+                      zIndex: 1400 // Ensure input is above other elements
+                    }}
+                  />
+                </StandaloneSearchBox>
+                <Button
+                  variant="outlined"
+                  onClick={handleUseCurrentLocation}
+                  disabled={loadingCurrentLocation}
+                  sx={{ ml: 2, whiteSpace: 'nowrap' }}
+                >
+                  {loadingCurrentLocation ? 'Loading...' : 'Use Current Location'}
+                </Button>
               </Box>
-              <Grid container spacing={2}>
+              {startLocation && <Typography mt={1}>Selected: {startLocation.name}</Typography>}
+
+              <Typography variant="subtitle1" sx={{ mt: 2 }}>Destination</Typography>
+              <StandaloneSearchBox onLoad={onDestinationLoad} onPlacesChanged={onDestinationPlacesChanged}>
+                <input
+                  type="text"
+                  placeholder="Enter destination"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    boxSizing: 'border-box',
+                    zIndex: 1400 // Ensure input is above other elements
+                  }}
+                />
+              </StandaloneSearchBox>
+              {destinationLocation && <Typography mt={1}>Selected: {destinationLocation.name}</Typography>}
+
+              <Grid container spacing={2} sx={{ mt: 2 }}>
                 <Grid item xs={6}>
                   <Button
                     fullWidth
                     variant="contained"
                     color="error"
-                    onClick={handleEmergencyCallRequest}
+                    onClick={() => handleEmergencyCallRequest('critical')}
+                    disabled={!startLocation || !destinationLocation}
                   >
                     Critical Emergency
                   </Button>
@@ -145,7 +319,8 @@ const PatientDashboard = ({ goBack }) => {
                     fullWidth
                     variant="contained"
                     color="warning"
-                    onClick={handleEmergencyCallRequest}
+                    onClick={() => handleEmergencyCallRequest('non-critical')}
+                    disabled={!startLocation || !destinationLocation}
                   >
                     Non-Critical Emergency
                   </Button>
@@ -165,12 +340,9 @@ const PatientDashboard = ({ goBack }) => {
 
         {/* Dashboard Grid */}
         <Grid container spacing={4}>
-          {/* Quick Stats */}
           <Grid item xs={12} md={4}>
             <Card>
-              <CardHeader
-                title="Emergency Response Time"
-              />
+              <CardHeader title="Emergency Response Time" />
               <CardContent>
                 <Typography variant="h3" color="success.main">
                   &lt; 5 mins
@@ -184,9 +356,7 @@ const PatientDashboard = ({ goBack }) => {
 
           <Grid item xs={12} md={4}>
             <Card>
-              <CardHeader
-                title="Available Services"
-              />
+              <CardHeader title="Available Services" />
               <CardContent>
                 <Box display="flex" justifyContent="space-between" mb={2}>
                   <Typography>Ambulances Nearby</Typography>
@@ -202,9 +372,7 @@ const PatientDashboard = ({ goBack }) => {
 
           <Grid item xs={12} md={4}>
             <Card>
-              <CardHeader
-                title="Medical Profile"
-              />
+              <CardHeader title="Medical Profile" />
               <CardContent>
                 <Box display="flex" alignItems="center" mb={2}>
                   <UserIcon sx={{ mr: 2, color: 'grey.500' }} />
@@ -261,10 +429,7 @@ const PatientDashboard = ({ goBack }) => {
                             fontSize: '0.75rem',
                             fontWeight: 'bold',
                             cursor: 'pointer',
-                            '&:hover': {
-                              bgcolor: 'success.main',
-                              color: 'white'
-                            }
+                            '&:hover': { bgcolor: 'success.main', color: 'white' }
                           }}
                           onClick={() => handleEmergencyClick(history)}
                         >
@@ -282,18 +447,14 @@ const PatientDashboard = ({ goBack }) => {
       </Container>
 
       {/* Emergency Details Modal */}
-      <EmergencyDetailsModal 
+      <EmergencyDetailsModal
         open={showEmergencyDetails}
         onClose={() => setShowEmergencyDetails(false)}
         emergency={selectedEmergency}
       />
 
       {/* Emergency Ambulance Calling Component */}
-      {showEmergencyCalling && (
-        <EmergencyAmbulanceCalling 
-          onClose={handleCloseEmergencyCalling}
-        />
-      )}
+      {showEmergencyCalling && <EmergencyAmbulanceCalling onClose={handleCloseEmergencyCalling} emergencyRequest={emergencyRequest} />}
     </Box>
   );
 };
