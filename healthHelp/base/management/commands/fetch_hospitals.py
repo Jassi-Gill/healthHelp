@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = 'Fetch hospitals in Assam from Google Maps API and save to database'
 
     def handle(self, *args, **kwargs):
-        api_key = "AIzaSyDn1RSmg4bDnFphEck6n9izITtTf7NKMvQ"  # Replace with your actual Google Maps API key
+        api_key = None  # Replace with your actual Google Maps API key
 
         cities = [
             "Guwahati", "Dibrugarh", "Jorhat", "Silchar", "Tezpur",
