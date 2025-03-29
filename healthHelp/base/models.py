@@ -81,10 +81,17 @@ class HospitalLocation(models.Model):
     latitude = models.DecimalField(max_digits=10, decimal_places=8)
     longitude = models.DecimalField(max_digits=11, decimal_places=8)
 
+
 class EmergencyRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_requests')
-    emergency_type = models.CharField(max_length=20, choices=[('medical', 'Medical'), ('fire', 'Fire'), ('police', 'Police'), ('disaster', 'Disaster'), ('other', 'Other')])
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_requests', null=True, blank=True)  # Made optional
+    start_location_latitude = models.FloatField(null=True, blank=True)
+    start_location_longitude = models.FloatField(null=True, blank=True)
+    start_location_name = models.CharField(max_length=255, null=True, blank=True)
+    end_location_latitude = models.FloatField(null=True, blank=True)
+    end_location_longitude = models.FloatField(null=True, blank=True)
+    end_location_name = models.CharField(max_length=255, null=True, blank=True)
+    emergency_type = models.CharField(max_length=20, choices=[('medical', 'Medical'), ('fire', 'Fire'), ('police', 'Police'), ('disaster', 'Disaster'), ('other', 'Other'), ('critical', 'Critical'), ('non-critical', 'Non-Critical')])  # Expanded choices
     description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=[('created', 'Created'), ('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], default='created')
     priority = models.CharField(max_length=10, choices=[('low', 'Low'), ('medium', 'Medium'), ('high', 'High'), ('critical', 'Critical')], default='medium')
@@ -135,12 +142,22 @@ class Location(models.Model):
     def __str__(self):
         return self.name
 
+# ... (other imports and models remain unchanged)
+
+
 class Trip(models.Model):
     name = models.CharField(max_length=100)
     start_location = models.ForeignKey(Location, related_name='start_trips', on_delete=models.CASCADE)
     end_location = models.ForeignKey(Location, related_name='end_trips', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_emergency = models.BooleanField(default=False)
+    emergency_type = models.CharField(max_length=20, choices=[('critical', 'Critical'), ('non-critical', 'Non-Critical')], blank=True, null=True)
+    emergency_request = models.ForeignKey(EmergencyRequest, on_delete=models.SET_NULL, blank=True, null=True)  # Added foreign key
 
+    def __str__(self):
+        return self.name
+
+# ... (other models remain unchanged)
     def __str__(self):
         return self.name
 
