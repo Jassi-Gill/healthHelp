@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -28,26 +28,52 @@ import {
   Map as MapIcon,
   AccessTime as ClockIcon
 } from '@mui/icons-material';
-
-// Import the MapDetails component
+import axios from 'axios';
 import MapDetails from './mapdetails';
 
 const PoliceDashboard = () => {
-  // State to manage which emergency is being navigated
+  const [activeEmergencies, setActiveEmergencies] = useState([]);
   const [navigatingEmergency, setNavigatingEmergency] = useState(null);
 
-  // Sample data - would come from your backend
-  const activeEmergencies = [
-    { id: 1, location: "123 Main St", type: "Robbery", eta: "5 mins" },
-    { id: 2, location: "456 Oak Ave", type: "Accident", eta: "8 mins" }
-  ];
+  useEffect(() => {
+    const fetchEmergencies = () => {
+      axios
+        .get('http://localhost:8000/api/emergency-requests/', {
+          params: { status: 'created,in_progress' } // Filter for active emergencies
+        })
+        .then(response => {
+          // Transform data to match expected structure
+          const transformedEmergencies = response.data.map(emergency => ({
+            id: emergency.id,
+            start_location: {
+              lat: emergency.start_location_latitude,
+              lng: emergency.start_location_longitude,
+              name: emergency.start_location_name
+            },
+            end_location: {
+              lat: emergency.end_location_latitude,
+              lng: emergency.end_location_longitude,
+              name: emergency.end_location_name
+            },
+            type: emergency.emergency_type,
+            status: emergency.status,
+            eta: emergency.eta || 'N/A' // ETA not in model; placeholder for future use
+          }));
+          setActiveEmergencies(transformedEmergencies);
+        })
+        .catch(error => {
+          console.error('Error fetching active emergencies:', error);
+        });
+    };
+    fetchEmergencies();
+    const interval = setInterval(fetchEmergencies, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
 
-  // Function to handle navigation button click
   const handleNavigate = (emergency) => {
     setNavigatingEmergency(emergency);
   };
 
-  // Function to close map details
   const handleCloseMap = () => {
     setNavigatingEmergency(null);
   };
@@ -72,12 +98,8 @@ const PoliceDashboard = () => {
 
       {/* Main Content */}
       <Container sx={{ py: 6 }}>
-        {/* Show MapDetails if navigating, otherwise show normal dashboard */}
         {navigatingEmergency ? (
-          <MapDetails 
-            emergency={navigatingEmergency} 
-            onClose={handleCloseMap} 
-          />
+          <MapDetails emergency={navigatingEmergency} onClose={handleCloseMap} />
         ) : (
           <>
             {/* Emergency Status Overview */}
@@ -88,14 +110,13 @@ const PoliceDashboard = () => {
                     <Box display="flex" justifyContent="space-between" alignItems="center">
                       <Box>
                         <Typography variant="body2" color="textSecondary">Active Emergencies</Typography>
-                        <Typography variant="h4" color="error">4</Typography>
+                        <Typography variant="h4" color="error">{activeEmergencies.length}</Typography>
                       </Box>
                       <AlertCircleIcon color="error" fontSize="large" />
                     </Box>
                   </CardContent>
                 </Card>
               </Grid>
-
               <Grid item xs={12} md={6} lg={3}>
                 <Card>
                   <CardContent>
@@ -109,7 +130,6 @@ const PoliceDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-
               <Grid item xs={12} md={6} lg={3}>
                 <Card>
                   <CardContent>
@@ -123,7 +143,6 @@ const PoliceDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-
               <Grid item xs={12} md={6} lg={3}>
                 <Card>
                   <CardContent>
@@ -146,7 +165,7 @@ const PoliceDashboard = () => {
                 <Card>
                   <CardHeader
                     title={
-                      <Typography variant="h6" component="div" className="flex items-center">
+                      <Typography variant="h6" component="div" sx={{ display: 'flex', alignItems: 'center' }}>
                         <AlertCircleIcon sx={{ mr: 2, color: 'red' }} />
                         Live Emergency Requests
                       </Typography>
@@ -159,16 +178,16 @@ const PoliceDashboard = () => {
                           <TableRow>
                             <TableCell>Location</TableCell>
                             <TableCell>Type</TableCell>
-                            <TableCell>ETA</TableCell>
+                            <TableCell>Status</TableCell>
                             <TableCell>Action</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {activeEmergencies.map((emergency) => (
                             <TableRow key={emergency.id}>
-                              <TableCell>{emergency.location}</TableCell>
+                              <TableCell>{emergency.start_location.name}</TableCell>
                               <TableCell>{emergency.type}</TableCell>
-                              <TableCell>{emergency.eta}</TableCell>
+                              <TableCell>{emergency.status}</TableCell>
                               <TableCell>
                                 <Button
                                   variant="contained"
@@ -184,70 +203,6 @@ const PoliceDashboard = () => {
                           ))}
                         </TableBody>
                       </Table>
-                    </Box>
-                  </CardContent>
-                </Card>
-
-                {/* Response Time Chart */}
-                <Card sx={{ mt: 6 }}>
-                  <CardHeader
-                    title={
-                      <Typography variant="h6" component="div" className="flex items-center">
-                        <BarChartIcon sx={{ mr: 2 }} />
-                        Response Time Analytics
-                      </Typography>
-                    }
-                  />
-                  <CardContent>
-                    <Box sx={{ height: 256, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}>
-                      Response time chart will be displayed here
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* Right Sidebar */}
-              <Grid item xs={12} lg={4}>
-                {/* Quick Actions */}
-                <Card>
-                  <CardHeader title="Quick Actions" />
-                  <CardContent>
-                    <Button variant="contained" color="error" fullWidth startIcon={<NavigationIcon />}>
-                      Dispatch Officer
-                    </Button>
-                    <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
-                      Contact Traffic Police
-                    </Button>
-                    <Button variant="contained" fullWidth sx={{ mt: 2 }}>
-                      View All Resources
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Available Resources */}
-                <Card sx={{ mt: 6 }}>
-                  <CardHeader title="Available Resources" />
-                  <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                      <Box display="flex" alignItems="center">
-                        <ShieldIcon sx={{ mr: 2, color: 'green' }} />
-                        <Typography>Emergency Officers</Typography>
-                      </Box>
-                      <Typography variant="h6" color="green">8</Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                      <Box display="flex" alignItems="center">
-                        <MapIcon sx={{ mr: 2, color: 'blue' }} />
-                        <Typography>Patrol Vehicles</Typography>
-                      </Box>
-                      <Typography variant="h6" color="blue">15</Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Box display="flex" alignItems="center">
-                        <ClockIcon sx={{ mr: 2, color: 'purple' }} />
-                        <Typography>Coverage Area</Typography>
-                      </Box>
-                      <Typography variant="h6" color="purple">5 km</Typography>
                     </Box>
                   </CardContent>
                 </Card>
