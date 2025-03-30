@@ -1,80 +1,116 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
+  Box,
+  Button,
   Card,
   CardContent,
   CardHeader,
-  Typography,
-  Button,
-  Box,
-  Grid,
   Container,
+  Modal,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
   AppBar,
   Toolbar,
   IconButton,
   Avatar,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Modal,
-  Paper
 } from '@mui/material';
 import {
+  Navigation as NavigationIcon,
+  ReportProblem as AlertCircleIcon,
   Notifications as BellIcon,
   Person as UserIcon,
   Phone as PhoneIcon,
-  AccessTime as ClockIcon,
-  LocationOn as MapPinIcon,
-  History as HistoryIcon,
   LocalHospital as HospitalIcon,
-  CalendarToday as CalendarIcon,
-  Settings as SettingsIcon,
-  Directions as NavigationIcon,
-  ReportProblem as AlertCircleIcon
 } from '@mui/icons-material';
+import MapDetails from './mapdetails'; // Ensure this component is available
 
 const DriverDashboard = () => {
-  const [showEmergencyForm, setShowEmergencyForm] = useState(false);
+  const [activeEmergencies, setActiveEmergencies] = useState([]);
+  const [showMap, setShowMap] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
 
-  // Sample data - would come from your backend
-  const activeEmergencies = [
-    { id: 1, location: "123 Main St", eta: "5 mins" },
-    { id: 2, location: "456 Oak Ave", eta: "8 mins" }
-  ];
-
-  const emergencyHistory = [
-    {
-      id: 1,
-      date: '2025-02-08',
-      type: 'Medical Emergency',
-      response: 'Uber Driver',
-      status: 'Completed',
-      duration: '15 mins'
-    },
-    {
-      id: 2,
-      date: '2025-02-01',
-      type: 'Accident',
-      response: 'Ambulance',
-      status: 'Completed',
-      duration: '12 mins'
+  // Fetch driver's current location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setDriverLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          setLocationError(error.message);
+        }
+      );
+    } else {
+      setLocationError('Geolocation is not supported by this browser.');
     }
-  ];
+  }, []);
+
+  // Fetch emergencies from API
+  useEffect(() => {
+    const fetchEmergencies = () => {
+      axios
+        .get('http://localhost:8000/api/emergency-requests/', {
+          params: { status: 'created,in_progress' }, // Filter for active emergencies
+        })
+        .then((response) => {
+          // Transform data to match expected structure
+          const transformedEmergencies = response.data.map((emergency) => ({
+            id: emergency.id,
+            start_location: {
+              lat: emergency.start_location_latitude,
+              lng: emergency.start_location_longitude,
+              name: emergency.start_location_name,
+            },
+            end_location: {
+              lat: emergency.end_location_latitude,
+              lng: emergency.end_location_longitude,
+              name: emergency.end_location_name,
+            },
+            type: emergency.emergency_type,
+            status: emergency.status,
+            eta: emergency.eta || 'N/A', // Placeholder for ETA
+          }));
+          setActiveEmergencies(transformedEmergencies);
+        })
+        .catch((error) => {
+          console.error('Error fetching active emergencies:', error);
+        });
+    };
+
+    fetchEmergencies();
+    const interval = setInterval(fetchEmergencies, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval); // Cleanup interval on unmount
+  }, []);
+
+  // Handle viewing the route for a selected trip
+  const handleViewRoute = (trip) => {
+    setSelectedTrip(trip);
+    setShowMap(true);
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.100' }}>
       {/* Top Navigation */}
-      <AppBar position="static">
+      <AppBar position="static" sx={{ bgcolor: 'primary.dark' }}>
         <Toolbar>
           <HospitalIcon sx={{ mr: 2, color: 'red' }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
             Driver Dashboard
           </Typography>
           <IconButton color="inherit">
             <BellIcon />
           </IconButton>
-          <Avatar sx={{ bgcolor: 'grey.300' }}>
+          <Avatar sx={{ bgcolor: 'secondary.main' }}>
             <UserIcon />
           </Avatar>
         </Toolbar>
@@ -82,226 +118,108 @@ const DriverDashboard = () => {
 
       {/* Main Content */}
       <Container sx={{ py: 6 }}>
+        {/* Location Error Message */}
+        {locationError && (
+          <Typography color="error" sx={{ mb: 2, textAlign: 'center' }}>
+            Unable to access location: {locationError}. Please allow location access to view routes.
+          </Typography>
+        )}
+
         {/* Emergency Button */}
-        <Box mb={8}>
+        <Box mb={4}>
           <Button
             fullWidth
             variant="contained"
             color="error"
             size="large"
             startIcon={<PhoneIcon />}
-            onClick={() => setShowEmergencyForm(true)}
+            sx={{ py: 2, fontSize: '1.1rem', borderRadius: 2 }}
           >
             Call Emergency Ambulance
           </Button>
         </Box>
 
-        {/* Emergency Form Modal */}
-        <Modal
-          open={showEmergencyForm}
-          onClose={() => setShowEmergencyForm(false)}
-          aria-labelledby="emergency-form-title"
-          aria-describedby="emergency-form-description"
-        >
-          <Paper sx={{ p: 4, maxWidth: 400, mx: 'auto', mt: 10 }}>
-            <Typography id="emergency-form-title" variant="h6" component="h2">
-              Request Emergency Service
-            </Typography>
-            <Box mt={2}>
-              <Box display="flex" alignItems="center" mb={2}>
-                <MapPinIcon sx={{ mr: 2, color: 'grey.500' }} />
-                <Typography>Current Location: 123 Emergency St</Typography>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    color="error"
-                    onClick={() => setShowEmergencyForm(false)}
-                  >
-                    Critical Emergency
-                  </Button>
-                </Grid>
-                <Grid item xs={6}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    color="warning"
-                    onClick={() => setShowEmergencyForm(false)}
-                  >
-                    Non-Critical Emergency
-                  </Button>
-                </Grid>
-              </Grid>
-              <Button
-                fullWidth
-                variant="outlined"
-                sx={{ mt: 2 }}
-                onClick={() => setShowEmergencyForm(false)}
-              >
-                Cancel
-              </Button>
-            </Box>
-          </Paper>
-        </Modal>
-
-        {/* Dashboard Grid */}
-        <Grid container spacing={4}>
-          {/* Active Emergencies */}
-          <Grid item xs={12} lg={8}>
-            <Card>
-              <CardHeader
-                title={
-                  <Typography variant="h6" component="div" className="flex items-center">
-                    <AlertCircleIcon sx={{ mr: 2, color: 'red' }} />
-                    Active Emergencies
-                  </Typography>
-                }
-              />
-              <CardContent>
-                <Box sx={{ overflowX: 'auto' }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Location</TableCell>
-                        <TableCell>ETA</TableCell>
-                        <TableCell>Action</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {activeEmergencies.map((emergency) => (
-                        <TableRow key={emergency.id}>
-                          <TableCell>{emergency.location}</TableCell>
-                          <TableCell>{emergency.eta}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              startIcon={<NavigationIcon />}
-                              sx={{ mt: 1 }}
-                            >
-                              Navigate
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Quick Stats */}
-          <Grid item xs={12} md={4}>
-            <Card>
-              <CardHeader
-                title="Emergency Response Time"
-              />
-              <CardContent>
-                <Typography variant="h3" color="success.main">
-                  &lt; 5 mins
-                </Typography>
-                <Typography color="textSecondary">
-                  Average response time in your area
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <Card>
-              <CardHeader
-                title="Available Services"
-              />
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" mb={2}>
-                  <Typography>Ambulances Nearby</Typography>
-                  <Typography variant="h6" color="success.main">4</Typography>
-                </Box>
-                <Box display="flex" justifyContent="space-between">
-                  <Typography>Uber/Ola Partners</Typography>
-                  <Typography variant="h6" color="success.main">12</Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <Card>
-              <CardHeader
-                title="Medical Profile"
-              />
-              <CardContent>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <UserIcon sx={{ mr: 2, color: 'grey.500' }} />
-                  <Typography>Blood Type: O+</Typography>
-                </Box>
-                <Box display="flex" alignItems="center">
-                  <CalendarIcon sx={{ mr: 2, color: 'grey.500' }} />
-                  <Typography>Last Emergency: 7 days ago</Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        {/* Emergency History */}
-        <Card sx={{ mt: 6 }}>
+        {/* Active Emergencies Section */}
+        <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
           <CardHeader
             title={
-              <Box display="flex" alignItems="center">
-                <HistoryIcon sx={{ mr: 2 }} />
-                Emergency History
-              </Box>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                <AlertCircleIcon sx={{ mr: 2, color: 'red' }} />
+                Active Emergencies
+              </Typography>
             }
           />
           <CardContent>
-            <Box sx={{ overflowX: 'auto' }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Response</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Duration</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {emergencyHistory.map((history) => (
-                    <TableRow key={history.id}>
-                      <TableCell>{history.date}</TableCell>
-                      <TableCell>{history.type}</TableCell>
-                      <TableCell>{history.response}</TableCell>
-                      <TableCell>
-                        <Box
-                          component="span"
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: 1,
-                            bgcolor: 'success.light',
-                            color: 'success.dark',
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          {history.status}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{history.duration}</TableCell>
+            {activeEmergencies.length > 0 ? (
+              <Box sx={{ overflowX: 'auto' }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Location</TableCell>
+                      <TableCell>Type</TableCell>
+                      <TableCell>ETA</TableCell>
+                      <TableCell>Action</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
+                  </TableHead>
+                  <TableBody>
+                    {activeEmergencies.map((emergency) => (
+                      <TableRow key={emergency.id}>
+                        <TableCell>{emergency.start_location.name}</TableCell>
+                        <TableCell>{emergency.type}</TableCell>
+                        <TableCell>{emergency.eta}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<NavigationIcon />}
+                            onClick={() => handleViewRoute(emergency)}
+                            disabled={!driverLocation}
+                            sx={{ borderRadius: 1 }}
+                          >
+                            View Route
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+            ) : (
+              <Typography variant="body1" sx={{ textAlign: 'center' }}>
+                No active emergencies at the moment
+              </Typography>
+            )}
           </CardContent>
         </Card>
       </Container>
+
+      {/* Map Modal */}
+      <Modal open={showMap} onClose={() => setShowMap(false)}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 800,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+          }}
+        >
+          {driverLocation && selectedTrip ? (
+            <MapDetails
+              start={driverLocation} // Driver's current location
+              end={selectedTrip.end_location} // Trip's end location as final destination
+              waypoints={[selectedTrip.start_location]} // Trip's start location as a stop
+              onClose={() => setShowMap(false)}
+            />
+          ) : (
+            <Typography>Unable to display map. Location data is missing.</Typography>
+          )}
+        </Box>
+      </Modal>
     </Box>
   );
 };
