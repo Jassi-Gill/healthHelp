@@ -18,7 +18,15 @@ import {
   TableCell,
   TableBody,
   Modal,
-  Paper
+  Paper,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Divider,
+  Input,
+  FormHelperText
 } from '@mui/material';
 import {
   Notifications as BellIcon,
@@ -28,7 +36,9 @@ import {
   LocationOn as MapPinIcon,
   History as HistoryIcon,
   LocalHospital as HospitalIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  Edit as EditIcon,
+  CloudUpload as UploadIcon
 } from '@mui/icons-material';
 import { StandaloneSearchBox } from '@react-google-maps/api';
 import axios from 'axios';
@@ -46,6 +56,21 @@ const PatientDashboard = ({ goBack }) => {
   const [destinationLocation, setDestinationLocation] = useState(null);
   const [loadingCurrentLocation, setLoadingCurrentLocation] = useState(false);
   const [emergencyRequest, setEmergencyRequest] = useState(null);
+  
+  // New state for profile update modal
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileData, setProfileData] = useState({
+    username: 'JohnDoe',
+    email: 'john.doe@example.com',
+    firstName: 'John',
+    lastName: 'Doe',
+    gender: 'Male',
+    address: '123 Main St, Anytown, USA',
+    medicalHistory: 'No known allergies'
+  });
+  const [insuranceFile, setInsuranceFile] = useState(null);
+  const [currentInsurance, setCurrentInsurance] = useState('insurance_policy.pdf');
+
   useEffect(() => {
     if (showEmergencyForm) {
       const style = document.createElement('style');
@@ -204,6 +229,79 @@ const PatientDashboard = ({ goBack }) => {
     setShowEmergencyCalling(false);
   };
 
+  // Handle profile data change
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileData({ ...profileData, [name]: value });
+  };
+
+  // Handle insurance file upload
+  const handleInsuranceFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Check file type (PDF only)
+      if (file.type !== 'application/pdf') {
+        alert('Please upload a PDF file for insurance documents.');
+        return;
+      }
+      
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size exceeds 5MB limit. Please upload a smaller file.');
+        return;
+      }
+      
+      setInsuranceFile(file);
+    }
+  };
+
+  // Handle profile update submission
+  const handleProfileUpdate = () => {
+    // Here you would normally send the updated profile to your backend
+    console.log('Updated profile:', profileData);
+    console.log('Insurance file:', insuranceFile);
+    
+    // Create FormData for file upload
+    const formData = new FormData();
+    Object.keys(profileData).forEach(key => {
+      formData.append(key, profileData[key]);
+    });
+    
+    if (insuranceFile) {
+      formData.append('insurance_document', insuranceFile);
+    }
+    
+    // Mock API call
+    setTimeout(() => {
+      alert('Profile updated successfully!');
+      if (insuranceFile) {
+        setCurrentInsurance(insuranceFile.name);
+      }
+      setShowProfileModal(false);
+    }, 500);
+    
+    // Real implementation would look like:
+    /*
+    axios.put('http://localhost:8000/api/patients/profile/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+      .then(response => {
+        alert('Profile updated successfully!');
+        if (insuranceFile) {
+          setCurrentInsurance(insuranceFile.name);
+        }
+        setShowProfileModal(false);
+      })
+      .catch(error => {
+        console.error('Error updating profile:', error);
+        alert('Failed to update profile. Please try again.');
+      });
+    */
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.100' }}>
       {/* Top Navigation */}
@@ -218,6 +316,15 @@ const PatientDashboard = ({ goBack }) => {
               Back to Login
             </Button>
           )}
+          {/* Update Profile Button */}
+          <Button 
+            color="inherit" 
+            startIcon={<EditIcon />} 
+            onClick={() => setShowProfileModal(true)}
+            sx={{ mr: 2 }}
+          >
+            Update Profile
+          </Button>
           <IconButton color="inherit">
             <BellIcon />
           </IconButton>
@@ -335,6 +442,200 @@ const PatientDashboard = ({ goBack }) => {
                 Cancel
               </Button>
             </Box>
+          </Paper>
+        </Modal>
+
+        {/* Profile Update Modal */}
+        <Modal
+          open={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          aria-labelledby="profile-form-title"
+        >
+          <Paper sx={{
+            p: 4,
+            maxWidth: 800,
+            mx: 'auto',
+            mt: 8,
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }}>
+            <Typography id="profile-form-title" variant="h5" component="h2" gutterBottom>
+              Update Your Profile
+            </Typography>
+            <Divider sx={{ mb: 3 }} />
+            
+            <Grid container spacing={3}>
+              {/* Account Information */}
+              <Grid item xs={12}>
+                <Typography variant="h6" color="primary" gutterBottom>
+                  Account Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Username"
+                  name="username"
+                  value={profileData.username}
+                  onChange={handleProfileChange}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={profileData.email}
+                  onChange={handleProfileChange}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="First Name"
+                  name="firstName"
+                  value={profileData.firstName}
+                  onChange={handleProfileChange}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  name="lastName"
+                  value={profileData.lastName}
+                  onChange={handleProfileChange}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel id="gender-label">Gender</InputLabel>
+                  <Select
+                    labelId="gender-label"
+                    name="gender"
+                    value={profileData.gender || ''}
+                    onChange={handleProfileChange}
+                    label="Gender"
+                  >
+                    <MenuItem value="Male">Male</MenuItem>
+                    <MenuItem value="Female">Female</MenuItem>
+                    <MenuItem value="Other">Other</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              {/* Medical Information */}
+              <Grid item xs={12} sx={{ mt: 2 }}>
+                <Typography variant="h6" color="primary" gutterBottom>
+                  Medical Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Address"
+                  name="address"
+                  multiline
+                  rows={2}
+                  value={profileData.address}
+                  onChange={handleProfileChange}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Medical History"
+                  name="medicalHistory"
+                  multiline
+                  rows={4}
+                  value={profileData.medicalHistory}
+                  onChange={handleProfileChange}
+                  placeholder="Enter your medical history, allergies, conditions, etc."
+                />
+              </Grid>
+              
+              {/* Insurance Document Upload */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Insurance Document
+                </Typography>
+                
+                {currentInsurance && (
+                  <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                      Current document:
+                    </Typography>
+                    <Typography variant="body2" color="primary">
+                      {currentInsurance}
+                    </Typography>
+                  </Box>
+                )}
+                
+                <Box
+                  sx={{
+                    border: '1px dashed',
+                    borderColor: 'grey.400',
+                    borderRadius: 1,
+                    p: 3,
+                    textAlign: 'center',
+                    backgroundColor: 'grey.50'
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    id="insurance-file-upload"
+                    style={{ display: 'none' }}
+                    onChange={handleInsuranceFileChange}
+                  />
+                  <label htmlFor="insurance-file-upload">
+                    <Button
+                      component="span"
+                      variant="contained"
+                      startIcon={<UploadIcon />}
+                      sx={{ mb: 2 }}
+                    >
+                      Upload Insurance PDF
+                    </Button>
+                  </label>
+                  <Typography variant="body2" color="text.secondary">
+                    {insuranceFile 
+                      ? `Selected file: ${insuranceFile.name}` 
+                      : 'Drag and drop a file here or click to browse'}
+                  </Typography>
+                  <FormHelperText>
+                    Accepted format: PDF only (Max size: 5MB)
+                  </FormHelperText>
+                </Box>
+              </Grid>
+              
+              {/* Buttons */}
+              <Grid item xs={12} sx={{ mt: 3 }}>
+                <Box display="flex" justifyContent="flex-end" gap={2}>
+                  <Button 
+                    variant="outlined" 
+                    onClick={() => setShowProfileModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="contained" 
+                    color="primary"
+                    onClick={handleProfileUpdate}
+                  >
+                    Save Changes
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
           </Paper>
         </Modal>
 
