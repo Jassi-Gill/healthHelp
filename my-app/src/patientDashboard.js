@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Webcam from 'react-webcam';
 import {
   Card,
   CardContent,
@@ -56,7 +57,7 @@ const PatientDashboard = ({ goBack }) => {
   const [destinationLocation, setDestinationLocation] = useState(null);
   const [loadingCurrentLocation, setLoadingCurrentLocation] = useState(false);
   const [emergencyRequest, setEmergencyRequest] = useState(null);
-  
+
   // New state for profile update modal
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -70,6 +71,11 @@ const PatientDashboard = ({ goBack }) => {
   });
   const [insuranceFile, setInsuranceFile] = useState(null);
   const [currentInsurance, setCurrentInsurance] = useState('insurance_policy.pdf');
+  // Handle capturing photo
+  const capturePhoto = () => {
+    const imageSrc = webcamRef.current.getScreenshot();
+    setPhoto(imageSrc);
+  };
 
   useEffect(() => {
     if (showEmergencyForm) {
@@ -82,6 +88,19 @@ const PatientDashboard = ({ goBack }) => {
     }
   }, [showEmergencyForm]);
 
+
+  // Convert base64 to Blob
+  const base64ToBlob = (base64) => {
+    const byteString = atob(base64.split(',')[1]);
+    const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  };
+  
   // Sample emergency history data (replace with backend data)
   const emergencyHistory = [
     {
@@ -239,19 +258,19 @@ const PatientDashboard = ({ goBack }) => {
   const handleInsuranceFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
+
       // Check file type (PDF only)
       if (file.type !== 'application/pdf') {
         alert('Please upload a PDF file for insurance documents.');
         return;
       }
-      
+
       // Check file size (limit to 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size exceeds 5MB limit. Please upload a smaller file.');
         return;
       }
-      
+
       setInsuranceFile(file);
     }
   };
@@ -261,17 +280,17 @@ const PatientDashboard = ({ goBack }) => {
     // Here you would normally send the updated profile to your backend
     console.log('Updated profile:', profileData);
     console.log('Insurance file:', insuranceFile);
-    
+
     // Create FormData for file upload
     const formData = new FormData();
     Object.keys(profileData).forEach(key => {
       formData.append(key, profileData[key]);
     });
-    
+
     if (insuranceFile) {
       formData.append('insurance_document', insuranceFile);
     }
-    
+
     // Mock API call
     setTimeout(() => {
       alert('Profile updated successfully!');
@@ -280,7 +299,7 @@ const PatientDashboard = ({ goBack }) => {
       }
       setShowProfileModal(false);
     }, 500);
-    
+
     // Real implementation would look like:
     /*
     axios.put('http://localhost:8000/api/patients/profile/', formData, {
@@ -317,9 +336,9 @@ const PatientDashboard = ({ goBack }) => {
             </Button>
           )}
           {/* Update Profile Button */}
-          <Button 
-            color="inherit" 
-            startIcon={<EditIcon />} 
+          <Button
+            color="inherit"
+            startIcon={<EditIcon />}
             onClick={() => setShowProfileModal(true)}
             sx={{ mr: 2 }}
           >
@@ -463,7 +482,7 @@ const PatientDashboard = ({ goBack }) => {
               Update Your Profile
             </Typography>
             <Divider sx={{ mb: 3 }} />
-            
+
             <Grid container spacing={3}>
               {/* Account Information */}
               <Grid item xs={12}>
@@ -471,7 +490,7 @@ const PatientDashboard = ({ goBack }) => {
                   Account Information
                 </Typography>
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -481,7 +500,7 @@ const PatientDashboard = ({ goBack }) => {
                   onChange={handleProfileChange}
                 />
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -492,7 +511,7 @@ const PatientDashboard = ({ goBack }) => {
                   onChange={handleProfileChange}
                 />
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -502,7 +521,7 @@ const PatientDashboard = ({ goBack }) => {
                   onChange={handleProfileChange}
                 />
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -512,7 +531,7 @@ const PatientDashboard = ({ goBack }) => {
                   onChange={handleProfileChange}
                 />
               </Grid>
-              
+
               <Grid item xs={12}>
                 <FormControl fullWidth>
                   <InputLabel id="gender-label">Gender</InputLabel>
@@ -529,14 +548,14 @@ const PatientDashboard = ({ goBack }) => {
                   </Select>
                 </FormControl>
               </Grid>
-              
+
               {/* Medical Information */}
               <Grid item xs={12} sx={{ mt: 2 }}>
                 <Typography variant="h6" color="primary" gutterBottom>
                   Medical Information
                 </Typography>
               </Grid>
-              
+
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -548,7 +567,7 @@ const PatientDashboard = ({ goBack }) => {
                   onChange={handleProfileChange}
                 />
               </Grid>
-              
+
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -561,13 +580,13 @@ const PatientDashboard = ({ goBack }) => {
                   placeholder="Enter your medical history, allergies, conditions, etc."
                 />
               </Grid>
-              
+
               {/* Insurance Document Upload */}
               <Grid item xs={12}>
                 <Typography variant="subtitle1" gutterBottom>
                   Insurance Document
                 </Typography>
-                
+
                 {currentInsurance && (
                   <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
@@ -578,7 +597,7 @@ const PatientDashboard = ({ goBack }) => {
                     </Typography>
                   </Box>
                 )}
-                
+
                 <Box
                   sx={{
                     border: '1px dashed',
@@ -607,8 +626,8 @@ const PatientDashboard = ({ goBack }) => {
                     </Button>
                   </label>
                   <Typography variant="body2" color="text.secondary">
-                    {insuranceFile 
-                      ? `Selected file: ${insuranceFile.name}` 
+                    {insuranceFile
+                      ? `Selected file: ${insuranceFile.name}`
                       : 'Drag and drop a file here or click to browse'}
                   </Typography>
                   <FormHelperText>
@@ -616,18 +635,18 @@ const PatientDashboard = ({ goBack }) => {
                   </FormHelperText>
                 </Box>
               </Grid>
-              
+
               {/* Buttons */}
               <Grid item xs={12} sx={{ mt: 3 }}>
                 <Box display="flex" justifyContent="flex-end" gap={2}>
-                  <Button 
-                    variant="outlined" 
+                  <Button
+                    variant="outlined"
                     onClick={() => setShowProfileModal(false)}
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    variant="contained" 
+                  <Button
+                    variant="contained"
                     color="primary"
                     onClick={handleProfileUpdate}
                   >
