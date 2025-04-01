@@ -7,6 +7,15 @@ from base.api.serializers import TripSerializer, LocationSerializer, TripStatusS
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 
+
+from rest_framework import status
+from google.cloud import vision
+import face_recognition
+from PIL import Image
+import numpy as np
+import io
+from .models import Patient
+
 class TripViewSet(viewsets.ModelViewSet):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
