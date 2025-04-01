@@ -125,7 +125,7 @@ const DriverDashboard = () => {
           </Typography>
         )}
 
-        {/* Emergency Button */}
+        {/* Emergency Button
         <Box mb={4}>
           <Button
             fullWidth
@@ -137,7 +137,7 @@ const DriverDashboard = () => {
           >
             Call Emergency Ambulance
           </Button>
-        </Box>
+        </Box> */}
 
         {/* Active Emergencies Section */}
         <Card sx={{ borderRadius: 2, boxShadow: 3 }}>

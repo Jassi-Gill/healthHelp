@@ -3,6 +3,7 @@ import { LoadScript } from '@react-google-maps/api';
 import PatientDashboard from './patientDashboard';
 import PoliceDashboard from './policeDashboard';
 import LoginPage from './LoginPage';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 const libraries = ['places'];
 
