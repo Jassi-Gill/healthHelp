@@ -16,10 +16,16 @@ class MedicalHistorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MedicalHistory
-        fields = ["description", "document_url"]
+        fields = ["id", "description", "document_url"]  # Added "id"
 
     def get_document_url(self, obj):
-        return obj.document.url if obj.document else None
+        if obj.document and hasattr(obj.document, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.document.url)
+            # Fallback for development
+            return f"http://localhost:8000{obj.document.url}"
+        return None
 
 
 class UserSerializer(ModelSerializer):
@@ -57,10 +63,22 @@ class PatientSerializer(ModelSerializer):
         }
 
     def get_face_image_url(self, obj):
-        return obj.face_image.url if obj.face_image else None
+        if obj.face_image and hasattr(obj.face_image, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.face_image.url)
+            # Fallback for development (optional)
+            return f"http://localhost:8000{obj.face_image.url}"
+        return None
 
     def get_insurance_document_url(self, obj):
-        return obj.insurance_document.url if obj.insurance_document else None
+        if obj.insurance_document and hasattr(obj.insurance_document, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.insurance_document.url)
+            # Fallback for development (optional)
+            return f"http://localhost:8000{obj.insurance_document.url}"
+        return None
 
 
 class DriverSerializer(ModelSerializer):

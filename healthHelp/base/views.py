@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 import requests
 from .models import MedicalHistory ,EmergencyRequest, Patient
-from base.api.serializers import EmergencyRequestSerializer, PatientSerializer
+from base.api.serializers import EmergencyRequestSerializer, PatientSerializer, MedicalHistorySerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from google.cloud import vision
@@ -15,7 +15,7 @@ import io
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
+from django.contrib.auth import update_session_auth_hash
 
 
 class PatientProfileUpdateView(APIView):
@@ -40,7 +40,7 @@ class PatientProfileUpdateView(APIView):
                 {'error': 'Patient profile not found for this user'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        serializer = PatientSerializer(patient)
+        serializer = PatientSerializer(patient, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def put(self, request, *args, **kwargs):
@@ -54,7 +54,6 @@ class PatientProfileUpdateView(APIView):
                 {'error': 'This endpoint is only for patients'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        # Get the Patient instance
         try:
             patient = request.user.patient
         except AttributeError:
@@ -65,30 +64,47 @@ class PatientProfileUpdateView(APIView):
         if not isinstance(patient, Patient):
             return Response({'error': 'Not a patient'}, status=status.HTTP_400_BAD_REQUEST)
         
+
+        # Handle insurance document deletion
+        if request.data.get('delete_insurance_document') == 'true':
+            if patient.insurance_document:
+                patient.insurance_document.delete(save=False)
+            patient.insurance_document = None
+        else:
+            if 'insurance_document' in request.FILES:
+                patient.insurance_document = request.FILES['insurance_document']
+
+        # Update patient profile
+        patient.username = request.data.get('username', patient.username)
+        patient.email = request.data.get('email', patient.email)
+        patient.first_name = request.data.get('first_name', patient.first_name)
+        patient.last_name = request.data.get('last_name', patient.last_name)
+        patient.gender = request.data.get('gender', patient.gender)
+        patient.address = request.data.get('address', patient.address)
+        
+        if request.data.get('delete_face_image') == 'true':
+            if patient.face_image:
+                patient.face_image.delete(save=False)  # Delete the file from storage
+            patient.face_image = None
+        elif 'face_image' in request.FILES:
+            patient.face_image = request.FILES['face_image']
+        
+        patient.save()
+
         if 'currentPassword' in request.data and 'newPassword' in request.data:
             if request.user.check_password(request.data['currentPassword']):
                 request.user.set_password(request.data['newPassword'])
-                request.user.save()
+                try:
+                    request.user.save()
+                except Exception as e:
+                    print(f"Save failed: {e}")
             else:
                 return Response(
                     {'error': 'Current password is incorrect'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            update_session_auth_hash(request, request.user)
 
-        # Update patient profile
-        patient.username = request.data.get('username', patient.username)
-        patient.email = request.data.get('email', patient.email)
-        patient.first_name = request.data.get('firstName', patient.first_name)
-        patient.last_name = request.data.get('lastName', patient.last_name)
-        patient.gender = request.data.get('gender', patient.gender)
-        patient.address = request.data.get('address', patient.address)
-
-        if 'face_image' in request.FILES:
-            patient.face_image = request.FILES['face_image']
-        if 'insurance_document' in request.FILES:
-            patient.insurance_document = request.FILES['insurance_document']
-
-        patient.save()
 
         # Handle new medical history entries
         medical_history_data = {}
@@ -96,13 +112,11 @@ class PatientProfileUpdateView(APIView):
             if key.startswith('medical_history_description_'):
                 index = key.split('_')[-1]
                 medical_history_data[index] = {'description': request.data[key]}
-
         for key in request.FILES:
             if key.startswith('medical_history_file_'):
                 index = key.split('_')[-1]
                 if index in medical_history_data:
                     medical_history_data[index]['file'] = request.FILES[key]
-
         for index, data in medical_history_data.items():
             if 'description' in data:
                 MedicalHistory.objects.create(
@@ -112,6 +126,21 @@ class PatientProfileUpdateView(APIView):
                 )
 
         return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+
+class MedicalHistoryViewSet(viewsets.ModelViewSet):
+    queryset = MedicalHistory.objects.all()
+    serializer_class = MedicalHistorySerializer
+    # permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only allow patients to see their own medical history
+        return MedicalHistory.objects.filter(patient=self.request.user.patient)
+
+    def perform_destroy(self, instance):
+        # Delete the file from storage
+        if instance.document:
+            instance.document.delete()
+        instance.delete()
 
 
 class EmergencyRequestViewSet(viewsets.ModelViewSet):

@@ -337,6 +337,27 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+  const handleDeleteFaceImage = async () => {
+    if (window.confirm('Are you sure you want to delete the face image?')) {
+      try {
+        const token = localStorage.getItem('token');
+        const formData = new FormData();
+        formData.append('delete_face_image', 'true');
+        await axios.put('http://localhost:8000/api/patients/profile/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`
+          },
+        });
+        setFaceImageUrl(null);
+        setFaceImageFile(null);
+      } catch (error) {
+        console.error('Error deleting face image:', error);
+        alert('Failed to delete face image. Please try again.');
+      }
+    }
+  };
+
   // Handle insurance file upload
   const handleInsuranceFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -365,6 +386,23 @@ const PatientDashboard = ({ goBack }) => {
     setMedicalHistoryEntries([...medicalHistoryEntries, { description: '', file: null }]);
   };
 
+  const handleDeleteMedicalHistory = async (id) => {
+    if (window.confirm('Are you sure you want to delete this medical history entry?')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`http://localhost:8000/api/medical-histories/${id}/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setExistingMedicalHistory(existingMedicalHistory.filter(entry => entry.id !== id));
+      } catch (error) {
+        console.error('Error deleting medical history:', error);
+        alert('Failed to delete medical history. Please try again.');
+      }
+    }
+  };
+
   // Handle profile update submission
   const handleProfileUpdate = () => {
     const token = localStorage.getItem('token');
@@ -384,6 +422,10 @@ const PatientDashboard = ({ goBack }) => {
     if (currentPassword && newPassword) {
       formData.append('currentPassword', currentPassword);
       formData.append('newPassword', newPassword);
+    }
+    else if (currentPassword || newPassword) {
+      alert('Please fill in both current and new password fields to change your password.');
+      return;
     }
     medicalHistoryEntries.forEach((entry, index) => {
       if (entry.description || entry.file) {
@@ -423,6 +465,27 @@ const PatientDashboard = ({ goBack }) => {
   };
 
   const handleInsuranceChange = (e) => setInsuranceFile(e.target.files[0]);
+
+  const handleDeleteInsuranceDocument = async () => {
+    if (window.confirm('Are you sure you want to delete the insurance document?')) {
+      try {
+        const token = localStorage.getItem('token');
+        const formData = new FormData();
+        formData.append('delete_insurance_document', 'true');
+        await axios.put('http://localhost:8000/api/patients/profile/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`
+          },
+        });
+        setInsuranceDocumentUrl(null);
+        setCurrentInsurance(null);
+      } catch (error) {
+        console.error('Error deleting insurance document:', error);
+        alert('Failed to delete insurance document. Please try again.');
+      }
+    }
+  };
 
   const capturePhoto = () => {
     const imageSrc = webcamRef.current.getScreenshot();
@@ -729,8 +792,17 @@ const PatientDashboard = ({ goBack }) => {
                   User Photo
                 </Typography>
                 {faceImageUrl && (
-                  <Box sx={{ mb: 2 }}>
-                    <img src={faceImageUrl} alt="Current Face" style={{ maxWidth: '200px' }} />
+                  <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <img src={faceImageUrl} alt="Current Face" style={{ maxWidth: '200px' }} />
+                      <br />
+                      <a href={faceImageUrl} target="_blank" rel="noopener noreferrer">
+                        View Current Face Image
+                      </a>
+                    </Box>
+                    <Button variant="outlined" color="error" onClick={handleDeleteFaceImage}>
+                      Delete Photo
+                    </Button>
                   </Box>
                 )}
                 <Box
@@ -765,7 +837,7 @@ const PatientDashboard = ({ goBack }) => {
                         startIcon={<UploadIcon />}
                         sx={{ mb: 2 }}
                       >
-                        Upload Photo
+                        {faceImageUrl ? 'Change Photo' : 'Upload Photo'}
                       </Button>
                     )}
                   </label>
@@ -782,20 +854,25 @@ const PatientDashboard = ({ goBack }) => {
                 <Typography variant="h6" color="primary" gutterBottom>
                   Medical History
                 </Typography>
-                {existingMedicalHistory.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    {existingMedicalHistory.map((entry, index) => (
-                      <Box key={index} sx={{ mb: 1 }}>
-                        <Typography>{entry.description}</Typography>
-                        {entry.document_url && (
-                          <a href={entry.document_url} target="_blank" rel="noopener noreferrer">
-                            View Document
-                          </a>
-                        )}
-                      </Box>
-                    ))}
+                {existingMedicalHistory.map((entry, index) => (
+                  <Box key={entry.id} sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography>{entry.description}</Typography>
+                      {entry.document_url && (
+                        <a href={entry.document_url} target="_blank" rel="noopener noreferrer">
+                          View Document
+                        </a>
+                      )}
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={() => handleDeleteMedicalHistory(entry.id)}
+                    >
+                      Delete
+                    </Button>
                   </Box>
-                )}
+                ))}
                 {medicalHistoryEntries.map((entry, index) => (
                   <Box key={index} sx={{ mb: 3 }}>
                     <TextField
@@ -863,10 +940,17 @@ const PatientDashboard = ({ goBack }) => {
                   Insurance Document
                 </Typography>
                 {insuranceDocumentUrl && (
-                  <Box sx={{ mb: 2 }}>
+                  <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <a href={insuranceDocumentUrl} target="_blank" rel="noopener noreferrer">
                       View Current Insurance Document
                     </a>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={handleDeleteInsuranceDocument}
+                    >
+                      Delete Insurance Document
+                    </Button>
                   </Box>
                 )}
                 <Box
