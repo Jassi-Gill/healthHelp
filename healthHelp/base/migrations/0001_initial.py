@@ -36,6 +36,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('user_type', models.CharField(choices=[('patient', 'Patient'), ('driver', 'Driver'), ('hospital', 'Hospital'), ('police', 'Police')], default='patient', max_length=10)),
+                ('user_type', models.CharField(choices=[('patient', 'Patient'), ('driver', 'Driver'), ('hospital', 'Hospital'), ('police', 'Police')], default='patient', max_length=10)),
                 ('groups', models.ManyToManyField(blank=True, help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.', related_name='user_set', related_query_name='user', to='auth.group', verbose_name='groups')),
                 ('user_permissions', models.ManyToManyField(blank=True, help_text='Specific permissions for this user.', related_name='user_set', related_query_name='user', to='auth.permission', verbose_name='user permissions')),
             ],
@@ -69,6 +70,13 @@ class Migration(migrations.Migration):
                 ('end_location_longitude', models.FloatField(blank=True, null=True)),
                 ('end_location_name', models.CharField(blank=True, max_length=255, null=True)),
                 ('emergency_type', models.CharField(choices=[('medical', 'Medical'), ('fire', 'Fire'), ('police', 'Police'), ('disaster', 'Disaster'), ('other', 'Other'), ('critical', 'Critical'), ('non-critical', 'Non-Critical')], max_length=20)),
+                ('start_location_latitude', models.FloatField(blank=True, null=True)),
+                ('start_location_longitude', models.FloatField(blank=True, null=True)),
+                ('start_location_name', models.CharField(blank=True, max_length=255, null=True)),
+                ('end_location_latitude', models.FloatField(blank=True, null=True)),
+                ('end_location_longitude', models.FloatField(blank=True, null=True)),
+                ('end_location_name', models.CharField(blank=True, max_length=255, null=True)),
+                ('emergency_type', models.CharField(choices=[('medical', 'Medical'), ('fire', 'Fire'), ('police', 'Police'), ('disaster', 'Disaster'), ('other', 'Other'), ('critical', 'Critical'), ('non-critical', 'Non-Critical')], max_length=20)),
                 ('description', models.TextField(blank=True, null=True)),
                 ('status', models.CharField(choices=[('created', 'Created'), ('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], default='created', max_length=20)),
                 ('priority', models.CharField(choices=[('low', 'Low'), ('medium', 'Medium'), ('high', 'High'), ('critical', 'Critical')], default='medium', max_length=10)),
@@ -78,7 +86,12 @@ class Migration(migrations.Migration):
         ),
         migrations.CreateModel(
             name='Location',
+            name='Location',
             fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('name', models.CharField(max_length=255)),
+                ('latitude', models.FloatField()),
+                ('longitude', models.FloatField()),
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=255)),
                 ('latitude', models.FloatField()),
@@ -103,8 +116,32 @@ class Migration(migrations.Migration):
                 ('user_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to=settings.AUTH_USER_MODEL)),
                 ('license_number', models.CharField(blank=True, max_length=50, null=True, unique=True)),
                 ('license_expiry', models.DateField(blank=True, null=True)),
+                ('license_number', models.CharField(blank=True, max_length=50, null=True, unique=True)),
+                ('license_expiry', models.DateField(blank=True, null=True)),
                 ('status', models.CharField(choices=[('available', 'Available'), ('busy', 'Busy'), ('offline', 'Offline')], default='offline', max_length=10)),
                 ('rating', models.DecimalField(blank=True, decimal_places=2, max_digits=3, null=True)),
+            ],
+            options={
+                'verbose_name': 'user',
+                'verbose_name_plural': 'users',
+                'abstract': False,
+            },
+            bases=('base.user',),
+            managers=[
+                ('objects', django.contrib.auth.models.UserManager()),
+            ],
+        ),
+        migrations.CreateModel(
+            name='Hospital',
+            fields=[
+                ('user_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to=settings.AUTH_USER_MODEL)),
+                ('name', models.CharField(max_length=100)),
+                ('address', models.TextField()),
+                ('phone', models.CharField(blank=True, max_length=20, null=True)),
+                ('capacity', models.IntegerField()),
+                ('emergency_capacity', models.IntegerField()),
+                ('hospital_active', models.BooleanField(default=True)),
+                ('hospital_email', models.EmailField(blank=True, max_length=254, null=True, unique=True)),
             ],
             options={
                 'verbose_name': 'user',
@@ -226,6 +263,29 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
+            name='Trip',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('name', models.CharField(max_length=100)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('is_emergency', models.BooleanField(default=False)),
+                ('emergency_type', models.CharField(blank=True, choices=[('critical', 'Critical'), ('non-critical', 'Non-Critical')], max_length=20, null=True)),
+                ('emergency_request', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='base.emergencyrequest')),
+                ('end_location', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='end_trips', to='base.location')),
+                ('start_location', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='start_trips', to='base.location')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='TripStatus',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('current_latitude', models.FloatField(blank=True, null=True)),
+                ('current_longitude', models.FloatField(blank=True, null=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('trip', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='base.trip')),
+            ],
+        ),
+        migrations.CreateModel(
             name='VehicleLocationHistory',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
@@ -235,6 +295,15 @@ class Migration(migrations.Migration):
                 ('speed', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
                 ('heading', models.IntegerField(blank=True, null=True)),
                 ('vehicle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='location_history', to='base.vehicle')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='HospitalLocation',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('latitude', models.DecimalField(decimal_places=8, max_digits=10)),
+                ('longitude', models.DecimalField(decimal_places=8, max_digits=11)),
+                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='locations', to='base.hospital')),
             ],
         ),
         migrations.CreateModel(
@@ -273,6 +342,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='emergencyrequest',
             name='patient',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='emergency_requests', to='base.patient'),
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='emergency_requests', to='base.patient'),
         ),
         migrations.CreateModel(

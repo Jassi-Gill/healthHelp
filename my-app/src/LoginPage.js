@@ -15,6 +15,8 @@ import {
   AlertTitle,
   CssBaseline,
   CircularProgress
+  CssBaseline,
+  CircularProgress
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import HospitalDashboard from './hospitalDashboard';
@@ -24,12 +26,34 @@ import PoliceDashboard from './policeDashboard';
 import SignupPage from './SignupPage';
 import MapNav from './mapNav';
 
+import SignupPage from './SignupPage';
+import MapNav from './mapNav';
+
 
 const LoginPage = () => {
   const [userType, setUserType] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentView, setCurrentView] = useState('login');
+  const [userData, setUserData] = useState(null);
+  const [authTokens, setAuthTokens] = useState(null);
+
+  // Check for existing login session on component mount
+  useEffect(() => {
+    const storedUserData = localStorage.getItem('userData');
+    const storedTokens = localStorage.getItem('authTokens');
+    const storedUserType = localStorage.getItem('userType');
+
+    if (storedUserData && storedTokens && storedUserType) {
+      setUserData(JSON.parse(storedUserData));
+      setAuthTokens(JSON.parse(storedTokens));
+      setCurrentView(`${storedUserType}Dashboard`);
+    }
+  }, []);
+
+  const handleSubmit = async (e) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentView, setCurrentView] = useState('login');
   const [userData, setUserData] = useState(null);
@@ -133,7 +157,17 @@ const LoginPage = () => {
           tokens={authTokens}
           logout={handleLogout}
         />;
+        return <PatientDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
       case 'driverDashboard':
+        return <DriverDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
         return <DriverDashboard
           userData={userData}
           tokens={authTokens}
@@ -145,7 +179,23 @@ const LoginPage = () => {
           tokens={authTokens}
           logout={handleLogout}
         />;
+        return <HospitalDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
       case 'policeDashboard':
+        return <PoliceDashboard
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
+      case 'mapNav':
+        return <MapNav
+          userData={userData}
+          tokens={authTokens}
+          logout={handleLogout}
+        />;
         return <PoliceDashboard
           userData={userData}
           tokens={authTokens}
@@ -217,6 +267,13 @@ const LoginPage = () => {
             fullWidth
             variant="contained"
             sx={{ mt: 3, mb: 2 }}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              "Login"
+            )}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -299,6 +356,68 @@ const LoginPage = () => {
             </Box>
           )}
 
+
+          {/* Quick Access Dashboard Buttons - For development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" align="center" gutterBottom>
+                Quick Dashboard Access (Dev Only)
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('patientDashboard')}
+                  >
+                    Patient Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('mapNav')}
+                  >
+                    MAAPPPYYY Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('driverDashboard')}
+                  >
+                    Driver Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('hospitalDashboard')}
+                  >
+                    Hospital Dashboard
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => setCurrentView('policeDashboard')}
+                  >
+                    Police Dashboard
+                  </Button>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
         </Box>
       </Box>
     );
@@ -308,6 +427,10 @@ const LoginPage = () => {
   const isDashboardView = !['login', 'signup'].includes(currentView);
 
   return (
+    <Container
+      component="main"
+      maxWidth={isDashboardView ? "xl" : "xs"}
+      disableGutters={isDashboardView}
     <Container
       component="main"
       maxWidth={isDashboardView ? "xl" : "xs"}
@@ -322,13 +445,21 @@ const LoginPage = () => {
       {renderDashboard()}
 
       {/* Logout button for dashboards */}
+
+      {/* Logout button for dashboards */}
       {isDashboardView && (
         <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
           <Button
             variant="contained"
             color="primary"
             onClick={handleLogout}
+        <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleLogout}
           >
+            Logout
             Logout
           </Button>
         </Box>
