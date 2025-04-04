@@ -27,7 +27,19 @@ class PatientProfileUpdateView(APIView):
         #         {'error': 'Authentication required'},
         #         status=status.HTTP_401_UNAUTHORIZED
         #     )
-        patient = request.user
+        if request.user.user_type != 'patient':
+            return Response(
+                {'error': 'This endpoint is only for patients'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # Get the Patient instance
+        try:
+            patient = request.user.patient
+        except AttributeError:
+            return Response(
+                {'error': 'Patient profile not found for this user'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         serializer = PatientSerializer(patient)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -37,7 +49,19 @@ class PatientProfileUpdateView(APIView):
         #         {'error': 'Authentication required'},
         #         status=status.HTTP_401_UNAUTHORIZED
         #     )
-        patient = request.user  # Assumes user is authenticated
+        if request.user.user_type != 'patient':
+            return Response(
+                {'error': 'This endpoint is only for patients'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # Get the Patient instance
+        try:
+            patient = request.user.patient
+        except AttributeError:
+            return Response(
+                {'error': 'Patient profile not found for this user'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         if not isinstance(patient, Patient):
             return Response({'error': 'Not a patient'}, status=status.HTTP_400_BAD_REQUEST)
         

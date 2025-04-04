@@ -37,7 +37,7 @@ class HospitalSerializer(ModelSerializer):
 class PatientSerializer(ModelSerializer):
     face_image_url = serializers.SerializerMethodField()
     insurance_document_url = serializers.SerializerMethodField()
-    medical_history = MedicalHistorySerializer(many=True, read_only=True)
+    medical_histories = MedicalHistorySerializer(many=True, read_only=True)  # Fixed
 
     class Meta:
         model = Patient

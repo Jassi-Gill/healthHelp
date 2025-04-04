@@ -80,6 +80,8 @@ const LoginPage = () => {
       if (!validUserTypes.includes(data.user_type)) {
         throw new Error('Invalid user type received');
       }
+
+      console.log('Login response:', data);
       localStorage.setItem('token', data.tokens.access);
       localStorage.setItem('userData', JSON.stringify(data.user));
       localStorage.setItem('userType', data.user_type);
