@@ -27,7 +27,9 @@ import {
   MenuItem,
   Divider,
   Input,
-  FormHelperText
+  FormHelperText,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Notifications as BellIcon,
@@ -57,6 +59,12 @@ const PatientDashboard = ({ goBack }) => {
   const [destinationLocation, setDestinationLocation] = useState(null);
   const [loadingCurrentLocation, setLoadingCurrentLocation] = useState(false);
   const [emergencyRequest, setEmergencyRequest] = useState(null);
+  const [showVerificationModal, setShowVerificationModal] = useState(false); // For photo capture
+  const [photo, setPhoto] = useState(null); // For storing captured photo
+  const [isForCurrentUser, setIsForCurrentUser] = useState(true); // New state for checkbox
+  const webcamRef = useRef(null);
+
+
 
   // New state for profile update modal
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -67,15 +75,17 @@ const PatientDashboard = ({ goBack }) => {
     lastName: 'Doe',
     gender: 'Male',
     address: '123 Main St, Anytown, USA',
-    medicalHistory: 'No known allergies'
   });
   const [insuranceFile, setInsuranceFile] = useState(null);
   const [currentInsurance, setCurrentInsurance] = useState('insurance_policy.pdf');
-  // Handle capturing photo
-  const capturePhoto = () => {
-    const imageSrc = webcamRef.current.getScreenshot();
-    setPhoto(imageSrc);
-  };
+  const [faceImageFile, setFaceImageFile] = useState(null);
+  const [medicalHistoryEntries, setMedicalHistoryEntries] = useState([{ description: '', file: null }]);
+  const [faceImageUrl, setFaceImageUrl] = useState(null);
+  const [insuranceDocumentUrl, setInsuranceDocumentUrl] = useState(null);
+  const [existingMedicalHistory, setExistingMedicalHistory] = useState([]);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showWebcam, setShowWebcam] = useState(false);
 
   useEffect(() => {
     if (showEmergencyForm) {
@@ -87,20 +97,44 @@ const PatientDashboard = ({ goBack }) => {
       };
     }
   }, [showEmergencyForm]);
-
-
-  // Convert base64 to Blob
-  const base64ToBlob = (base64) => {
-    const byteString = atob(base64.split(',')[1]);
-    const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
+  useEffect(() => {
+    if (showProfileModal) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please log in to access your profile.');
+        return;
+      }
+      axios.get('http://localhost:8000/api/patients/profile/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+        .then(response => {
+          const data = response.data;
+          setProfileData({
+            username: data.username,
+            email: data.email,
+            firstName: data.first_name,
+            lastName: data.last_name,
+            gender: data.gender,
+            address: data.address
+          });
+          setFaceImageUrl(data.face_image_url);
+          setInsuranceDocumentUrl(data.insurance_document_url);
+          setExistingMedicalHistory(data.medical_histories);  // Changed from medical_history to medical_histories
+          setFaceImageFile(null);
+          setInsuranceFile(null);
+          setCurrentPassword('');
+          setNewPassword('');
+        })
+        .catch(error => {
+          console.error('Error fetching profile:', error);
+          alert('Failed to load profile data. Please try again.');
+        });
     }
-    return new Blob([ab], { type: mimeString });
-  };
-  
+  }, [showProfileModal]);
+
+
   // Sample emergency history data (replace with backend data)
   const emergencyHistory = [
     {
@@ -200,52 +234,85 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+
+  // Convert base64 to Blob
+  const base64ToBlob = (base64) => {
+    const byteString = atob(base64.split(',')[1]);
+    const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  };
+
   // Handle emergency call request
-  const handleEmergencyCallRequest = (type) => {
+  const handleEmergencyCallRequest = async (type) => {
     if (!startLocation || !destinationLocation) {
       alert('Please select both start and destination locations.');
       return;
     }
 
-    axios
-      .post(
+    // Require photo only if the request is for the current user
+    // if (isForCurrentUser && !photo) {
+    //   alert('Please capture a photo for verification.');
+    //   return;
+    // }
+
+    const formData = new FormData();
+    if (photo) {
+      formData.append('photo', base64ToBlob(photo));
+    }
+    formData.append('start_location_latitude', startLocation.lat);
+    formData.append('start_location_longitude', startLocation.lng);
+    formData.append('start_location_name', startLocation.name);
+    formData.append('end_location_latitude', destinationLocation.lat);
+    formData.append('end_location_longitude', destinationLocation.lng);
+    formData.append('end_location_name', destinationLocation.name);
+    formData.append('emergency_type', type);
+
+    try {
+      const response = await axios.post(
         'http://localhost:8000/api/emergency-requests/',
-        {
-          start_location_latitude: startLocation.lat,
-          start_location_longitude: startLocation.lng,
-          start_location_name: startLocation.name,
-          end_location_latitude: destinationLocation.lat,
-          end_location_longitude: destinationLocation.lng,
-          end_location_name: destinationLocation.name,
-          emergency_type: type,  // 'critical' or 'non-critical'
-        }
-      )
-      .then((response) => {
-        setShowEmergencyForm(false);
-        setShowEmergencyCalling(true);
-        setStartLocation(null);
-        setDestinationLocation(null);
-        setEmergencyRequest(response.data);
-      })
-      .catch((error) => {
-        console.error('Error requesting emergency service:', error);
-        if (error.response) {
-          if (error.response.status === 401) {
-            alert('Unauthorized request. Please log in if required.');
-          } else if (error.response.status === 400) {
-            alert('Invalid request data: ' + JSON.stringify(error.response.data));
-          } else {
-            alert('Failed to request emergency service. Please try again.');
-          }
-        } else {
-          alert('Network error. Please check your connection.');
-        }
-      });
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      setShowEmergencyForm(false);
+      setShowEmergencyCalling(true);
+      setStartLocation(null);
+      setDestinationLocation(null);
+      setEmergencyRequest(response.data);
+      setPhoto(null); // Reset photo after successful request
+    } catch (error) {
+      console.error('Error requesting emergency service:', error);
+      if (error.response) {
+        alert('Error: ' + (error.response.data.error || 'Failed to process request'));
+      } else {
+        alert('Network error. Please check your connection.');
+      }
+    }
   };
 
   // Close emergency calling dialog
   const handleCloseEmergencyCalling = () => {
     setShowEmergencyCalling(false);
+  };
+
+  // Handle verification modal close
+  const handleVerificationClose = () => {
+    setShowVerificationModal(false);
+    setPhoto(null);
+  };
+
+  // Proceed to emergency form after capturing photo
+  const proceedToEmergencyForm = () => {
+    if (isForCurrentUser && !photo) {
+      alert('Please capture a photo before proceeding.');
+      return;
+    }
+    setShowVerificationModal(false);
+    setShowEmergencyForm(true);
   };
 
   // Handle profile data change
@@ -254,71 +321,118 @@ const PatientDashboard = ({ goBack }) => {
     setProfileData({ ...profileData, [name]: value });
   };
 
+  // Handle face image file upload
+  const handleFaceImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file for the user photo.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size exceeds 5MB limit.');
+        return;
+      }
+      setFaceImageFile(file);
+    }
+  };
+
   // Handle insurance file upload
   const handleInsuranceFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-
-      // Check file type (PDF only)
       if (file.type !== 'application/pdf') {
         alert('Please upload a PDF file for insurance documents.');
         return;
       }
-
-      // Check file size (limit to 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size exceeds 5MB limit. Please upload a smaller file.');
+        alert('File size exceeds 5MB limit.');
         return;
       }
-
       setInsuranceFile(file);
     }
   };
 
+  // Handle medical history change
+  const handleMedicalHistoryChange = (index, field, value) => {
+    const newEntries = [...medicalHistoryEntries];
+    newEntries[index][field] = value;
+    setMedicalHistoryEntries(newEntries);
+  };
+
+  // Add new medical history entry
+  const addMedicalHistoryEntry = () => {
+    setMedicalHistoryEntries([...medicalHistoryEntries, { description: '', file: null }]);
+  };
+
   // Handle profile update submission
   const handleProfileUpdate = () => {
-    // Here you would normally send the updated profile to your backend
-    console.log('Updated profile:', profileData);
-    console.log('Insurance file:', insuranceFile);
-
-    // Create FormData for file upload
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please log in to update your profile.');
+      return;
+    }
     const formData = new FormData();
-    Object.keys(profileData).forEach(key => {
-      formData.append(key, profileData[key]);
+    formData.append('username', profileData.username);
+    formData.append('email', profileData.email);
+    formData.append('first_name', profileData.firstName);
+    formData.append('last_name', profileData.lastName);
+    formData.append('gender', profileData.gender);
+    formData.append('address', profileData.address);
+    if (faceImageFile) formData.append('face_image', faceImageFile);
+    if (insuranceFile) formData.append('insurance_document', insuranceFile);
+    if (currentPassword && newPassword) {
+      formData.append('currentPassword', currentPassword);
+      formData.append('newPassword', newPassword);
+    }
+    medicalHistoryEntries.forEach((entry, index) => {
+      if (entry.description || entry.file) {
+        formData.append(`medical_history_description_${index}`, entry.description);
+        if (entry.file) {
+          formData.append(`medical_history_file_${index}`, entry.file);
+        }
+      }
     });
 
-    if (insuranceFile) {
-      formData.append('insurance_document', insuranceFile);
-    }
-
-    // Mock API call
-    setTimeout(() => {
-      alert('Profile updated successfully!');
-      if (insuranceFile) {
-        setCurrentInsurance(insuranceFile.name);
-      }
-      setShowProfileModal(false);
-    }, 500);
-
-    // Real implementation would look like:
-    /*
     axios.put('http://localhost:8000/api/patients/profile/', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      },
     })
-      .then(response => {
+      .then(() => {
         alert('Profile updated successfully!');
         if (insuranceFile) {
           setCurrentInsurance(insuranceFile.name);
         }
+        setFaceImageFile(null);
+        setInsuranceFile(null);
+        setMedicalHistoryEntries([{ description: '', file: null }]);
+        setCurrentPassword('');
+        setNewPassword('');
         setShowProfileModal(false);
       })
       .catch(error => {
         console.error('Error updating profile:', error);
-        alert('Failed to update profile. Please try again.');
+        if (error.response && error.response.status === 401) {
+          alert('Session expired. Please log in again.');
+        } else {
+          alert('Failed to update profile. Please try again.');
+        }
       });
-    */
+  };
+
+  const handleInsuranceChange = (e) => setInsuranceFile(e.target.files[0]);
+
+  const capturePhoto = () => {
+    const imageSrc = webcamRef.current.getScreenshot();
+    fetch(imageSrc)
+      .then(res => res.blob())
+      .then(blob => {
+        const file = new File([blob], 'webcam_photo.jpg', { type: 'image/jpeg' });
+        setFaceImageFile(file);
+        setShowWebcam(false);
+      });
   };
 
   return (
@@ -428,6 +542,45 @@ const PatientDashboard = ({ goBack }) => {
               </StandaloneSearchBox>
               {destinationLocation && <Typography mt={1}>Selected: {destinationLocation.name}</Typography>}
 
+              {/* Checkbox for current user or other */}
+              {/* <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isForCurrentUser}
+                    onChange={(e) => setIsForCurrentUser(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="This request is for me"
+                sx={{ mt: 2 }}
+              /> */}
+
+              {/* Webcam for photo capture (only if for current user) */}
+              {/* {isForCurrentUser && (
+                <Box mt={2}>
+                  <Typography variant="subtitle1">Verify Your Identity</Typography>
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    width="100%"
+                  />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={capturePhoto}
+                    sx={{ mt: 2 }}
+                  >
+                    Capture Photo
+                  </Button>
+                  {photo && (
+                    <Box mt={2}>
+                      <img src={photo} alt="Captured" style={{ width: '100%' }} />
+                    </Box>
+                  )}
+                </Box>
+              )} */}
+
               <Grid container spacing={2} sx={{ mt: 2 }}>
                 <Grid item xs={6}>
                   <Button
@@ -482,7 +635,6 @@ const PatientDashboard = ({ goBack }) => {
               Update Your Profile
             </Typography>
             <Divider sx={{ mb: 3 }} />
-
             <Grid container spacing={3}>
               {/* Account Information */}
               <Grid item xs={12}>
@@ -490,56 +642,45 @@ const PatientDashboard = ({ goBack }) => {
                   Account Information
                 </Typography>
               </Grid>
-
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Username"
-                  name="username"
                   value={profileData.username}
-                  onChange={handleProfileChange}
+                  onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
                 />
               </Grid>
-
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Email"
-                  name="email"
-                  type="email"
                   value={profileData.email}
-                  onChange={handleProfileChange}
+                  onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                 />
               </Grid>
-
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="First Name"
-                  name="firstName"
                   value={profileData.firstName}
-                  onChange={handleProfileChange}
+                  onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
                 />
               </Grid>
-
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Last Name"
-                  name="lastName"
                   value={profileData.lastName}
-                  onChange={handleProfileChange}
+                  onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
                 />
               </Grid>
-
               <Grid item xs={12}>
                 <FormControl fullWidth>
                   <InputLabel id="gender-label">Gender</InputLabel>
                   <Select
                     labelId="gender-label"
-                    name="gender"
                     value={profileData.gender || ''}
-                    onChange={handleProfileChange}
+                    onChange={(e) => setProfileData({ ...profileData, gender: e.target.value })}
                     label="Gender"
                   >
                     <MenuItem value="Male">Male</MenuItem>
@@ -548,6 +689,24 @@ const PatientDashboard = ({ goBack }) => {
                   </Select>
                 </FormControl>
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Current Password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="New Password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </Grid>
 
               {/* Medical Information */}
               <Grid item xs={12} sx={{ mt: 2 }}>
@@ -555,49 +714,161 @@ const PatientDashboard = ({ goBack }) => {
                   Medical Information
                 </Typography>
               </Grid>
-
               <Grid item xs={12}>
                 <TextField
                   fullWidth
                   label="Address"
-                  name="address"
                   multiline
                   rows={2}
                   value={profileData.address}
-                  onChange={handleProfileChange}
+                  onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
                 />
               </Grid>
-
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Medical History"
-                  name="medicalHistory"
-                  multiline
-                  rows={4}
-                  value={profileData.medicalHistory}
-                  onChange={handleProfileChange}
-                  placeholder="Enter your medical history, allergies, conditions, etc."
-                />
+                <Typography variant="subtitle1" gutterBottom>
+                  User Photo
+                </Typography>
+                {faceImageUrl && (
+                  <Box sx={{ mb: 2 }}>
+                    <img src={faceImageUrl} alt="Current Face" style={{ maxWidth: '200px' }} />
+                  </Box>
+                )}
+                <Box
+                  sx={{
+                    border: '1px dashed',
+                    borderColor: 'grey.400',
+                    borderRadius: 1,
+                    p: 3,
+                    textAlign: 'center',
+                    backgroundColor: 'grey.50'
+                  }}
+                >
+                  {showWebcam ? (
+                    <>
+                      <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" width="100%" />
+                      <Button onClick={capturePhoto} sx={{ mt: 2 }}>Capture Photo</Button>
+                    </>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="face-image-upload"
+                      style={{ display: 'none' }}
+                      onChange={handleFaceImageChange}
+                    />
+                  )}
+                  <label htmlFor="face-image-upload">
+                    {!showWebcam && (
+                      <Button
+                        component="span"
+                        variant="contained"
+                        startIcon={<UploadIcon />}
+                        sx={{ mb: 2 }}
+                      >
+                        Upload Photo
+                      </Button>
+                    )}
+                  </label>
+                  <Button onClick={() => setShowWebcam(!showWebcam)}>
+                    {showWebcam ? 'Use File Upload' : 'Use Webcam'}
+                  </Button>
+                  <Typography variant="body2" color="text.secondary">
+                    {faceImageFile ? `Selected file: ${faceImageFile.name}` : 'Drag and drop an image or use webcam'}
+                  </Typography>
+                  <FormHelperText>Accepted formats: JPEG, PNG (Max size: 5MB)</FormHelperText>
+                </Box>
               </Grid>
-
-              {/* Insurance Document Upload */}
+              <Grid item xs={12}>
+                <Typography variant="h6" color="primary" gutterBottom>
+                  Medical History
+                </Typography>
+                {existingMedicalHistory.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    {existingMedicalHistory.map((entry, index) => (
+                      <Box key={index} sx={{ mb: 1 }}>
+                        <Typography>{entry.description}</Typography>
+                        {entry.document_url && (
+                          <a href={entry.document_url} target="_blank" rel="noopener noreferrer">
+                            View Document
+                          </a>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                {medicalHistoryEntries.map((entry, index) => (
+                  <Box key={index} sx={{ mb: 3 }}>
+                    <TextField
+                      fullWidth
+                      label={`Medical History Description ${index + 1}`}
+                      multiline
+                      rows={4}
+                      value={entry.description}
+                      onChange={(e) => handleMedicalHistoryChange(index, 'description', e.target.value)}
+                    />
+                    <Box
+                      sx={{
+                        border: '1px dashed',
+                        borderColor: 'grey.400',
+                        borderRadius: 1,
+                        p: 3,
+                        textAlign: 'center',
+                        backgroundColor: 'grey.50',
+                        mt: 2
+                      }}
+                    >
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        id={`medical-history-file-${index}`}
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            const file = e.target.files[0];
+                            if (file.type !== 'application/pdf') {
+                              alert('Please upload a PDF file.');
+                              return;
+                            }
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('File size exceeds 5MB limit.');
+                              return;
+                            }
+                            handleMedicalHistoryChange(index, 'file', file);
+                          }
+                        }}
+                      />
+                      <label htmlFor={`medical-history-file-${index}`}>
+                        <Button
+                          component="span"
+                          variant="contained"
+                          startIcon={<UploadIcon />}
+                          sx={{ mb: 2 }}
+                        >
+                          Upload PDF
+                        </Button>
+                      </label>
+                      <Typography variant="body2" color="text.secondary">
+                        {entry.file ? `Selected file: ${entry.file.name}` : 'Drag and drop a PDF here'}
+                      </Typography>
+                      <FormHelperText>Accepted format: PDF only (Max size: 5MB)</FormHelperText>
+                    </Box>
+                  </Box>
+                ))}
+                <Button onClick={addMedicalHistoryEntry} sx={{ mt: 2 }}>
+                  Add Another Medical History Entry
+                </Button>
+              </Grid>
               <Grid item xs={12}>
                 <Typography variant="subtitle1" gutterBottom>
                   Insurance Document
                 </Typography>
-
-                {currentInsurance && (
-                  <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                      Current document:
-                    </Typography>
-                    <Typography variant="body2" color="primary">
-                      {currentInsurance}
-                    </Typography>
+                {insuranceDocumentUrl && (
+                  <Box sx={{ mb: 2 }}>
+                    <a href={insuranceDocumentUrl} target="_blank" rel="noopener noreferrer">
+                      View Current Insurance Document
+                    </a>
                   </Box>
                 )}
-
                 <Box
                   sx={{
                     border: '1px dashed',
@@ -613,7 +884,7 @@ const PatientDashboard = ({ goBack }) => {
                     accept="application/pdf"
                     id="insurance-file-upload"
                     style={{ display: 'none' }}
-                    onChange={handleInsuranceFileChange}
+                    onChange={handleInsuranceChange}
                   />
                   <label htmlFor="insurance-file-upload">
                     <Button
@@ -626,30 +897,17 @@ const PatientDashboard = ({ goBack }) => {
                     </Button>
                   </label>
                   <Typography variant="body2" color="text.secondary">
-                    {insuranceFile
-                      ? `Selected file: ${insuranceFile.name}`
-                      : 'Drag and drop a file here or click to browse'}
+                    {insuranceFile ? `Selected file: ${insuranceFile.name}` : 'Drag and drop a PDF here'}
                   </Typography>
-                  <FormHelperText>
-                    Accepted format: PDF only (Max size: 5MB)
-                  </FormHelperText>
+                  <FormHelperText>Accepted format: PDF only (Max size: 5MB)</FormHelperText>
                 </Box>
               </Grid>
-
-              {/* Buttons */}
               <Grid item xs={12} sx={{ mt: 3 }}>
                 <Box display="flex" justifyContent="flex-end" gap={2}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => setShowProfileModal(false)}
-                  >
+                  <Button variant="outlined" onClick={() => setShowProfileModal(false)}>
                     Cancel
                   </Button>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleProfileUpdate}
-                  >
+                  <Button variant="contained" color="primary" onClick={handleProfileUpdate}>
                     Save Changes
                   </Button>
                 </Box>

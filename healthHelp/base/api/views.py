@@ -66,9 +66,7 @@ def login(request):
             user_data.update(
                 {
                     "address": patient.address,
-                    "medical_history": patient.medical_history,
-                    "insurance_details": patient.insurance_details,
-                }
+                    }
             )
 
         elif user_type == "driver":
@@ -212,8 +210,6 @@ def signup(request):
                     password=password,
                     user_type="patient",
                     address=request.data.get("address", ""),
-                    medical_history=request.data.get("medical_history", ""),
-                    insurance_details=request.data.get("insurance_details", {}),
                 )
 
                 serializer = PatientSerializer(patient)

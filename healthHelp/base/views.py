@@ -2,8 +2,8 @@ from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 import requests
-from .models import Trip, Location, TripStatus, EmergencyRequest, Patient
-from base.api.serializers import TripSerializer, LocationSerializer, TripStatusSerializer, EmergencyRequestSerializer
+from .models import MedicalHistory ,EmergencyRequest, Patient
+from base.api.serializers import EmergencyRequestSerializer, PatientSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from google.cloud import vision
@@ -16,22 +16,74 @@ from rest_framework.permissions import IsAuthenticated
 
 class PatientProfileUpdateView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def post(self, request):
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         patient = request.user
-        face_image = request.FILES.get('face_image')
-        if face_image:
-            # Verify the image has exactly one face
-            client = vision.ImageAnnotatorClient()
-            image_content = face_image.read()
-            image = vision.Image(content=image_content)
-            response = client.face_detection(image=image)
-            if len(response.face_annotations) != 1:
-                return Response({'error': 'Image must contain exactly one face'}, status=status.HTTP_400_BAD_REQUEST)
-            patient.face_image = image_content
-            patient.save()
-            return Response({'message': 'Face image updated successfully'}, status=status.HTTP_200_OK)
-        return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = PatientSerializer(patient)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def put(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        patient = request.user  # Assumes user is authenticated
+        if not isinstance(patient, Patient):
+            return Response({'error': 'Not a patient'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if 'currentPassword' in request.data and 'newPassword' in request.data:
+            if request.user.check_password(request.data['currentPassword']):
+                request.user.set_password(request.data['newPassword'])
+                request.user.save()
+            else:
+                return Response(
+                    {'error': 'Current password is incorrect'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Update patient profile
+        patient.username = request.data.get('username', patient.username)
+        patient.email = request.data.get('email', patient.email)
+        patient.first_name = request.data.get('firstName', patient.first_name)
+        patient.last_name = request.data.get('lastName', patient.last_name)
+        patient.gender = request.data.get('gender', patient.gender)
+        patient.address = request.data.get('address', patient.address)
+
+        if 'face_image' in request.FILES:
+            patient.face_image = request.FILES['face_image']
+        if 'insurance_document' in request.FILES:
+            patient.insurance_document = request.FILES['insurance_document']
+
+        patient.save()
+
+        # Handle new medical history entries
+        medical_history_data = {}
+        for key in request.data:
+            if key.startswith('medical_history_description_'):
+                index = key.split('_')[-1]
+                medical_history_data[index] = {'description': request.data[key]}
+
+        for key in request.FILES:
+            if key.startswith('medical_history_file_'):
+                index = key.split('_')[-1]
+                if index in medical_history_data:
+                    medical_history_data[index]['file'] = request.FILES[key]
+
+        for index, data in medical_history_data.items():
+            if 'description' in data:
+                MedicalHistory.objects.create(
+                    patient=patient,
+                    description=data['description'],
+                    document=data.get('file')
+                )
+
+        return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+
 
 class EmergencyRequestViewSet(viewsets.ModelViewSet):
     queryset = EmergencyRequest.objects.all()

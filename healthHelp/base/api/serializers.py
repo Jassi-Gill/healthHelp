@@ -1,56 +1,73 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
-from base.models import User, Patient, Police, Driver, Hospital, Trip, Location, TripStatus, EmergencyRequest
+from base.models import (
+    User,
+    Patient,
+    Police,
+    Driver,
+    Hospital,
+    EmergencyRequest,
+    MedicalHistory,
+)
 
-class LocationSerializer(ModelSerializer):
+
+class MedicalHistorySerializer(serializers.ModelSerializer):
+    document_url = serializers.SerializerMethodField()
+
     class Meta:
-        model = Location
-        fields = ['id', 'name', 'latitude', 'longitude']
+        model = MedicalHistory
+        fields = ["description", "document_url"]
 
-class TripSerializer(ModelSerializer):
-    start_location = LocationSerializer()
-    end_location = LocationSerializer()
+    def get_document_url(self, obj):
+        return obj.document.url if obj.document else None
 
-    class Meta:
-        model = Trip
-        fields = ['id', 'name', 'start_location', 'end_location', 'created_at']
-
-    def create(self, validated_data):
-        start_location_data = validated_data.pop('start_location')
-        end_location_data = validated_data.pop('end_location')
-        start_location = Location.objects.create(**start_location_data)
-        end_location = Location.objects.create(**end_location_data)
-        trip = Trip.objects.create(
-            start_location=start_location,
-            end_location=end_location,
-            **validated_data
-        )
-        return trip
-
-class TripStatusSerializer(ModelSerializer):
-    class Meta:
-        model = TripStatus
-        fields = ['trip', 'current_latitude', 'current_longitude', 'updated_at']
 
 class UserSerializer(ModelSerializer):
     class Meta:
         model = User
         fields = "__all__"
 
+
 class HospitalSerializer(ModelSerializer):
     class Meta:
         model = Hospital
         fields = "__all__"
 
+
 class PatientSerializer(ModelSerializer):
+    face_image_url = serializers.SerializerMethodField()
+    insurance_document_url = serializers.SerializerMethodField()
+    medical_history = MedicalHistorySerializer(many=True, read_only=True)
+
     class Meta:
         model = Patient
         fields = "__all__"
+
+    def get_user(self, obj):
+        return {
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "gender",
+            "address",
+            "face_image_url",
+            "insurance_document_url",
+            "medical_histories",
+        }
+
+    def get_face_image_url(self, obj):
+        return obj.face_image.url if obj.face_image else None
+
+    def get_insurance_document_url(self, obj):
+        return obj.insurance_document.url if obj.insurance_document else None
+
 
 class DriverSerializer(ModelSerializer):
     class Meta:
         model = Driver
         fields = "__all__"
+
 
 class PoliceSerializer(ModelSerializer):
     class Meta:
@@ -58,28 +75,22 @@ class PoliceSerializer(ModelSerializer):
         fields = "__all__"
 
 
-
-class LocationSerializer(ModelSerializer):
-    class Meta:
-        model = Location
-        fields = ['id', 'name', 'latitude', 'longitude']
-
-class TripStatusSerializer(ModelSerializer):
-    class Meta:
-        model = TripStatus
-        fields = ['id', 'trip', 'current_latitude', 'current_longitude', 'updated_at']
-
 class EmergencyRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmergencyRequest
-        fields = ['id', 'patient', 'start_location_latitude', 'start_location_longitude', 'start_location_name', 
-                  'end_location_latitude', 'end_location_longitude', 'end_location_name', 'emergency_type', 
-                  'description', 'status', 'priority', 'created_at', 'updated_at']
-        
-        
-class TripSerializer(ModelSerializer):
-    emergency_request = serializers.PrimaryKeyRelatedField(queryset=EmergencyRequest.objects.all(), required=False, allow_null=True)
-
-    class Meta:
-        model = Trip
-        fields = ['id', 'name', 'start_location', 'end_location', 'created_at', 'is_emergency', 'emergency_type', 'emergency_request']
+        fields = [
+            "id",
+            "patient",
+            "start_location_latitude",
+            "start_location_longitude",
+            "start_location_name",
+            "end_location_latitude",
+            "end_location_longitude",
+            "end_location_name",
+            "emergency_type",
+            "description",
+            "status",
+            "priority",
+            "created_at",
+            "updated_at",
+        ]

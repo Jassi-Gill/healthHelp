@@ -8,20 +8,25 @@ class User(AbstractUser):
     gender = models.CharField(max_length=20, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
     user_type = models.CharField(max_length=10, choices=[('patient', 'Patient'), ('driver', 'Driver'), ('hospital', 'Hospital'), ('police', 'Police')], default='patient')
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
-    
+
 class Patient(User):
     address = models.TextField(blank=True, null=True)
-    medical_history = models.TextField(blank=True, null=True)
-    insurance_details = models.JSONField(blank=True, null=True)
-    face_image = models.BinaryField(blank=True, null=True)  # New field for face image blob
+    insurance_document = models.FileField(upload_to='insurance_documents/', blank=True, null=True)
+    face_image = models.ImageField(upload_to='face_images/', blank=True, null=True)
+
 
     class Meta:
         db_table = 'patient'
+
+class MedicalHistory(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_histories')
+    description = models.TextField()
+    document = models.FileField(upload_to='medical_history/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 class Driver(User):
     license_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
