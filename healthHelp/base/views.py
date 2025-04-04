@@ -13,25 +13,30 @@ import numpy as np
 import io
 #jassi
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+
 
 class PatientProfileUpdateView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return Response(
-                {'error': 'Authentication required'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+        # if not request.user.is_authenticated:
+        #     return Response(
+        #         {'error': 'Authentication required'},
+        #         status=status.HTTP_401_UNAUTHORIZED
+        #     )
         patient = request.user
         serializer = PatientSerializer(patient)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def put(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return Response(
-                {'error': 'Authentication required'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+        # if not request.user.is_authenticated:
+        #     return Response(
+        #         {'error': 'Authentication required'},
+        #         status=status.HTTP_401_UNAUTHORIZED
+        #     )
         patient = request.user  # Assumes user is authenticated
         if not isinstance(patient, Patient):
             return Response({'error': 'Not a patient'}, status=status.HTTP_400_BAD_REQUEST)
