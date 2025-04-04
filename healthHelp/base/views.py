@@ -11,7 +11,7 @@ import face_recognition
 from PIL import Image
 import numpy as np
 import io
-
+#jassi
 from rest_framework.permissions import IsAuthenticated
 
 class PatientProfileUpdateView(APIView):
