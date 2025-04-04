@@ -15,14 +15,7 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
     
-class Patient(User):
-    address = models.TextField(blank=True, null=True)
-    medical_history = models.TextField(blank=True, null=True)
-    insurance_details = models.JSONField(blank=True, null=True)
-    face_image = models.BinaryField(blank=True, null=True)  # New field for face image blob
 
-    class Meta:
-        db_table = 'patient'
 
 class Driver(User):
     license_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
@@ -50,7 +43,6 @@ class Patient(User):
     insurance_document = models.FileField(upload_to='insurance_documents/', blank=True, null=True)
     face_image = models.ImageField(upload_to='face_images/', blank=True, null=True)
 
-
     class Meta:
         db_table = 'patient'
 
@@ -59,26 +51,6 @@ class MedicalHistory(models.Model):
     description = models.TextField()
     document = models.FileField(upload_to='medical_history/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-class Driver(User):
-    license_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
-    license_expiry = models.DateField(blank=True, null=True)
-    status = models.CharField(max_length=10, choices=[('available', 'Available'), ('busy', 'Busy'), ('offline', 'Offline')], default='offline')
-    rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
-
-class Hospital(User):
-    name = models.CharField(max_length=100)
-    address = models.TextField()
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    capacity = models.IntegerField()
-    emergency_capacity = models.IntegerField()
-    hospital_active = models.BooleanField(default=True)  
-    hospital_email = models.EmailField(unique=True, blank=True, null=True)  
-
-class Police(User):
-    badge_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
-    station_name = models.CharField(max_length=255, blank=True, null=True)
-    rank = models.CharField(max_length=50)
 
 
 class EmergencyContact(models.Model):
