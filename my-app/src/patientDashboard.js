@@ -59,11 +59,14 @@ const PatientDashboard = ({ goBack }) => {
   const [destinationLocation, setDestinationLocation] = useState(null);
   const [loadingCurrentLocation, setLoadingCurrentLocation] = useState(false);
   const [emergencyRequest, setEmergencyRequest] = useState(null);
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [photo, setPhoto] = useState(null);
-  const [isForCurrentUser, setIsForCurrentUser] = useState(true);
+  const [showVerificationModal, setShowVerificationModal] = useState(false); // For photo capture
+  const [photo, setPhoto] = useState(null); // For storing captured photo
+  const [isForCurrentUser, setIsForCurrentUser] = useState(true); // New state for checkbox
   const webcamRef = useRef(null);
 
+
+
+  // New state for profile update modal
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileData, setProfileData] = useState({
     username: 'JohnDoe',
@@ -114,7 +117,6 @@ const PatientDashboard = ({ goBack }) => {
       };
     }
   }, [showEmergencyForm]);
-
   useEffect(() => {
     if (showProfileModal) {
       const token = localStorage.getItem('token');
@@ -139,7 +141,7 @@ const PatientDashboard = ({ goBack }) => {
           });
           setFaceImageUrl(data.face_image_url);
           setInsuranceDocumentUrl(data.insurance_document_url);
-          setExistingMedicalHistory(data.medical_histories);
+          setExistingMedicalHistory(data.medical_histories);  // Changed from medical_history to medical_histories
           setFaceImageFile(null);
           setInsuranceFile(null);
           setCurrentPassword('');
@@ -152,14 +154,18 @@ const PatientDashboard = ({ goBack }) => {
     }
   }, [showProfileModal]);
 
+
+  // Handle clicking an emergency history entry
   const handleEmergencyClick = (emergency) => {
     setSelectedEmergency(emergency);
     setShowEmergencyDetails(true);
   };
 
+  // Load handlers for search boxes
   const onStartLoad = (ref) => setStartSearchBox(ref);
   const onDestinationLoad = (ref) => setDestinationSearchBox(ref);
 
+  // Handle place selection for start location
   const onStartPlacesChanged = () => {
     if (startSearchBox) {
       const places = startSearchBox.getPlaces();
@@ -174,6 +180,7 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+  // Handle place selection for destination
   const onDestinationPlacesChanged = () => {
     if (destinationSearchBox) {
       const places = destinationSearchBox.getPlaces();
@@ -188,6 +195,7 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+  // Handle "Use Current Location" button
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
       setLoadingCurrentLocation(true);
@@ -226,6 +234,8 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+
+  // Convert base64 to Blob
   const base64ToBlob = (base64) => {
     const byteString = atob(base64.split(',')[1]);
     const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
@@ -237,11 +247,19 @@ const PatientDashboard = ({ goBack }) => {
     return new Blob([ab], { type: mimeString });
   };
 
+  // Handle emergency call request
   const handleEmergencyCallRequest = async (type) => {
     if (!startLocation || !destinationLocation) {
       alert('Please select both start and destination locations.');
       return;
     }
+
+    // Require photo only if the request is for the current user
+    // if (isForCurrentUser && !photo) {
+    //   alert('Please capture a photo for verification.');
+    //   return;
+    // }
+
     const formData = new FormData();
     if (photo) {
       formData.append('photo', base64ToBlob(photo));
@@ -265,7 +283,7 @@ const PatientDashboard = ({ goBack }) => {
       setStartLocation(null);
       setDestinationLocation(null);
       setEmergencyRequest(response.data);
-      setPhoto(null);
+      setPhoto(null); // Reset photo after successful request
     } catch (error) {
       console.error('Error requesting emergency service:', error);
       if (error.response) {
@@ -276,6 +294,7 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+  // Close emergency calling dialog
   const handleCloseEmergencyCalling = () => {
     setShowEmergencyCalling(false);
   };
@@ -297,6 +316,7 @@ const PatientDashboard = ({ goBack }) => {
     setPhoto(null);
   };
 
+  // Proceed to emergency form after capturing photo
   const proceedToEmergencyForm = () => {
     if (isForCurrentUser && !photo) {
       alert('Please capture a photo before proceeding.');
@@ -306,11 +326,13 @@ const PatientDashboard = ({ goBack }) => {
     setShowEmergencyForm(true);
   };
 
+  // Handle profile data change
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
     setProfileData({ ...profileData, [name]: value });
   };
 
+  // Handle face image file upload
   const handleFaceImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -347,6 +369,7 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+  // Handle insurance file upload
   const handleInsuranceFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -362,12 +385,14 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+  // Handle medical history change
   const handleMedicalHistoryChange = (index, field, value) => {
     const newEntries = [...medicalHistoryEntries];
     newEntries[index][field] = value;
     setMedicalHistoryEntries(newEntries);
   };
 
+  // Add new medical history entry
   const addMedicalHistoryEntry = () => {
     setMedicalHistoryEntries([...medicalHistoryEntries, { description: '', file: null }]);
   };
@@ -389,6 +414,7 @@ const PatientDashboard = ({ goBack }) => {
     }
   };
 
+  // Handle profile update submission
   const handleProfileUpdate = () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -407,7 +433,8 @@ const PatientDashboard = ({ goBack }) => {
     if (currentPassword && newPassword) {
       formData.append('currentPassword', currentPassword);
       formData.append('newPassword', newPassword);
-    } else if (currentPassword || newPassword) {
+    }
+    else if (currentPassword || newPassword) {
       alert('Please fill in both current and new password fields to change your password.');
       return;
     }
@@ -490,6 +517,7 @@ const PatientDashboard = ({ goBack }) => {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.100' }}>
+      {/* Top Navigation */}
       <AppBar position="static">
         <Toolbar>
           <HospitalIcon sx={{ mr: 2, color: 'red' }} />
@@ -501,6 +529,7 @@ const PatientDashboard = ({ goBack }) => {
               Back to Login
             </Button>
           )}
+          {/* Update Profile Button */}
           <Button
             color="inherit"
             startIcon={<EditIcon />}
@@ -518,7 +547,9 @@ const PatientDashboard = ({ goBack }) => {
         </Toolbar>
       </AppBar>
 
+      {/* Main Content */}
       <Container sx={{ py: 6 }}>
+        {/* Emergency Button */}
         <Box mb={8}>
           <Button
             fullWidth
@@ -532,6 +563,7 @@ const PatientDashboard = ({ goBack }) => {
           </Button>
         </Box>
 
+        {/* Emergency Form Modal */}
         <Modal
           open={showEmergencyForm}
           onClose={() => setShowEmergencyForm(false)}
@@ -544,7 +576,7 @@ const PatientDashboard = ({ goBack }) => {
             mx: 'auto',
             mt: 10,
             position: 'relative',
-            zIndex: 1301
+            zIndex: 1301 // Ensure modal content is above backdrop
           }}>
             <Typography id="emergency-form-title" variant="h6" component="h2">
               Request Emergency Service
@@ -560,7 +592,7 @@ const PatientDashboard = ({ goBack }) => {
                       width: '100%',
                       padding: '10px',
                       boxSizing: 'border-box',
-                      zIndex: 1400
+                      zIndex: 1400 // Ensure input is above other elements
                     }}
                   />
                 </StandaloneSearchBox>
@@ -584,11 +616,50 @@ const PatientDashboard = ({ goBack }) => {
                     width: '100%',
                     padding: '10px',
                     boxSizing: 'border-box',
-                    zIndex: 1400
+                    zIndex: 1400 // Ensure input is above other elements
                   }}
                 />
               </StandaloneSearchBox>
               {destinationLocation && <Typography mt={1}>Selected: {destinationLocation.name}</Typography>}
+
+              {/* Checkbox for current user or other */}
+              {/* <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isForCurrentUser}
+                    onChange={(e) => setIsForCurrentUser(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="This request is for me"
+                sx={{ mt: 2 }}
+              /> */}
+
+              {/* Webcam for photo capture (only if for current user) */}
+              {/* {isForCurrentUser && (
+                <Box mt={2}>
+                  <Typography variant="subtitle1">Verify Your Identity</Typography>
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    width="100%"
+                  />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={capturePhoto}
+                    sx={{ mt: 2 }}
+                  >
+                    Capture Photo
+                  </Button>
+                  {photo && (
+                    <Box mt={2}>
+                      <img src={photo} alt="Captured" style={{ width: '100%' }} />
+                    </Box>
+                  )}
+                </Box>
+              )} */}
 
               <Grid container spacing={2} sx={{ mt: 2 }}>
                 <Grid item xs={6}>
@@ -626,6 +697,7 @@ const PatientDashboard = ({ goBack }) => {
           </Paper>
         </Modal>
 
+        {/* Profile Update Modal */}
         <Modal
           open={showProfileModal}
           onClose={() => setShowProfileModal(false)}
@@ -644,6 +716,7 @@ const PatientDashboard = ({ goBack }) => {
             </Typography>
             <Divider sx={{ mb: 3 }} />
             <Grid container spacing={3}>
+              {/* Account Information */}
               <Grid item xs={12}>
                 <Typography variant="h6" color="primary" gutterBottom>
                   Account Information
@@ -715,6 +788,7 @@ const PatientDashboard = ({ goBack }) => {
                 />
               </Grid>
 
+              {/* Medical Information */}
               <Grid item xs={12} sx={{ mt: 2 }}>
                 <Typography variant="h6" color="primary" gutterBottom>
                   Medical Information
@@ -943,6 +1017,7 @@ const PatientDashboard = ({ goBack }) => {
           </Paper>
         </Modal>
 
+        {/* Dashboard Grid */}
         <Grid container spacing={4}>
           <Grid item xs={12} md={4}>
             <Card>
@@ -991,6 +1066,7 @@ const PatientDashboard = ({ goBack }) => {
           </Grid>
         </Grid>
 
+        {/* Emergency History */}
         <Card sx={{ mt: 6 }}>
           <CardHeader
             title={
@@ -1049,6 +1125,7 @@ const PatientDashboard = ({ goBack }) => {
         </Card>
       </Container>
 
+      {/* Emergency Details Modal */}
       <EmergencyDetailsModal
         open={showEmergencyDetails}
         onClose={() => setShowEmergencyDetails(false)}

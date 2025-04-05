@@ -242,7 +242,7 @@ class HospitalStatusView(APIView):
             hospital = Hospital.objects.get(id=request.user.id)
             return Response({
                 'hospital_active': hospital.hospital_active,
-                'status': hospital.status
+                'status': 'available' if hospital.hospital_active else 'offline',
             }, status=status.HTTP_200_OK)
         except Hospital.DoesNotExist:
             return Response({
@@ -254,14 +254,10 @@ class HospitalStatusView(APIView):
             hospital = Hospital.objects.get(id=request.user.id)
             if 'hospital_active' in request.data:
                 hospital.hospital_active = request.data['hospital_active']
-                if hospital.hospital_active:
-                    hospital.status = 'available'
-                else:
-                    hospital.status = 'offline'
                 hospital.save()
                 return Response({
                     'hospital_active': hospital.hospital_active,
-                    'status': hospital.status,
+                    'status': 'available' if hospital.hospital_active else 'offline',
                     'message': f'Hospital status updated to {"active" if hospital.hospital_active else "inactive"}'
                 }, status=status.HTTP_200_OK)
             else:
@@ -282,7 +278,7 @@ class PoliceStatusView(APIView):
             police = Police.objects.get(id=request.user.id)
             return Response({
                 'police_active': police.police_active,
-                'status': police.status
+                'status': 'available' if police.police_active else 'offline'
             }, status=status.HTTP_200_OK)
         except Police.DoesNotExist:
             return Response({
@@ -294,14 +290,10 @@ class PoliceStatusView(APIView):
             police = Police.objects.get(id=request.user.id)
             if 'police_active' in request.data:
                 police.police_active = request.data['police_active']
-                if police.police_active:
-                    police.status = 'available'
-                else:
-                    police.status = 'offline'
                 police.save()
                 return Response({
                     'police_active': police.police_active,
-                    'status': police.status,
+                    'status': 'available' if police.police_active else 'offline',
                     'message': f'Police status updated to {"active" if police.police_active else "inactive"}'
                 }, status=status.HTTP_200_OK)
             else:

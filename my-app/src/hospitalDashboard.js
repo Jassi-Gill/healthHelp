@@ -19,6 +19,8 @@ import {
   Typography,
   FormControlLabel,
   Switch,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   LocalHospital as HospitalIcon,
@@ -53,10 +55,10 @@ const HospitalDashboard = () => {
       try {
         const response = await axios.get('http://localhost:8000/api/hospital/status/', {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
         });
-        setOnDuty(response.data.driver_active);
+        setOnDuty(response.data.hospital_active);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching driver status:', error);
@@ -108,10 +110,10 @@ const HospitalDashboard = () => {
 
       const response = await axios.patch(
         'http://localhost:8000/api/hospital/status/',
-        { driver_active: newStatus },
+        { hospital_active: newStatus },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'application/json',
           },
         }
@@ -398,6 +400,16 @@ const HospitalDashboard = () => {
           </Grid>
         </Container>
       )}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

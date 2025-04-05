@@ -19,6 +19,8 @@ import {
   TableBody,
   FormControlLabel,
   Switch,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Notifications as BellIcon,
@@ -45,15 +47,15 @@ const PoliceDashboard = () => {
     severity: 'info',
   });
   useEffect(() => {
-    // Fetch driver status
+    // Fetch police status
     const fetchPoliceStatus = async () => {
       try {
         const response = await axios.get('http://localhost:8000/api/police/status/', {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
         });
-        setOnDuty(response.data.driver_active);
+        setOnDuty(response.data.police_active);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching driver status:', error);
@@ -106,10 +108,10 @@ const PoliceDashboard = () => {
 
       const response = await axios.patch(
         'http://localhost:8000/api/police/status/',
-        { driver_active: newStatus },
+        { police_active: newStatus },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'application/json',
           },
         }
@@ -302,6 +304,16 @@ const PoliceDashboard = () => {
           </>
         )}
       </Container>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
