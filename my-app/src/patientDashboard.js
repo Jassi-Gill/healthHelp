@@ -456,10 +456,16 @@ const PatientDashboard = ({ goBack }) => {
       })
       .catch(error => {
         console.error('Error updating profile:', error);
-        if (error.response && error.response.status === 401) {
-          alert('Session expired. Please log in again.');
+        if (error.response) {
+          if (error.response.status === 401) {
+            alert('Session expired. Please log in again.');
+          } else if (error.response.data && error.response.data.error) {
+            alert(error.response.data.error);
+          } else {
+            alert('Failed to update profile. Please try again.');
+          }
         } else {
-          alert('Failed to update profile. Please try again.');
+          alert('Network error. Please check your connection.');
         }
       });
   };

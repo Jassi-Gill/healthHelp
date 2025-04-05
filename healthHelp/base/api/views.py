@@ -71,10 +71,11 @@ def login(request):
 
         elif user_type == "driver":
             driver = authenticated_user.driver
+            license_expiry = driver.license_expiry.strftime("%Y-%m-%d") if driver.license_expiry else None
             user_data.update(
                 {
                     "license_number": driver.license_number,
-                    "license_expiry": driver.license_expiry.strftime("%Y-%m-%d"),
+                    "license_expiry": license_expiry,
                     "status": driver.status,
                     "rating": float(driver.rating) if driver.rating else None,
                 }

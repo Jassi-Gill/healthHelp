@@ -16,8 +16,8 @@ from .models import MedicalHistory, EmergencyRequest, Patient, Driver, Hospital,
 from base.api.serializers import EmergencyRequestSerializer, PatientSerializer, MedicalHistorySerializer, DriverSerializer
 
 class DriverProfileUpdateView(APIView):
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
 
     def get(self, request, *args, **kwargs):
         if request.user.user_type != 'driver':

@@ -78,7 +78,7 @@ const DriverDashboard = () => {
       await axios.patch(
         'http://localhost:8000/api/driver/status/',
         { driver_active: newStatus },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' } }
       );
       setOnDuty(newStatus);
       setSnackbar({ open: true, message: `You are now ${newStatus ? 'on duty' : 'off duty'}`, severity: 'success' });
@@ -137,7 +137,7 @@ const DriverDashboard = () => {
 
   useEffect(() => {
     if (showProfileModal) {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       if (!token) {
         alert('Please log in to access your profile.');
         return;
