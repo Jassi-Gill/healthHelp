@@ -11,7 +11,6 @@ import face_recognition
 from PIL import Image
 import numpy as np
 import io
-#jassi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -84,7 +83,7 @@ class PatientProfileUpdateView(APIView):
         
         if request.data.get('delete_face_image') == 'true':
             if patient.face_image:
-                patient.face_image.delete(save=False)  # Delete the file from storage
+                patient.face_image.delete(save=False) 
             patient.face_image = None
         elif 'face_image' in request.FILES:
             patient.face_image = request.FILES['face_image']
