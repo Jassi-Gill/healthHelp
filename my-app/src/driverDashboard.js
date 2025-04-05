@@ -45,7 +45,7 @@ const DriverDashboard = () => {
     const fetchDriverStatus = async () => {
       try {
         const response = await axios.get('http://localhost:8000/api/driver/status/', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         setOnDuty(response.data.driver_active);
         setLoading(false);
@@ -104,7 +104,7 @@ const DriverDashboard = () => {
       axios
         .get('http://localhost:8000/api/emergency-requests/', {
           params: { status: 'created,in_progress' },
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         })
         .then((response) => {
           const transformedEmergencies = response.data.map((emergency) => ({

@@ -194,8 +194,8 @@ class PatientProfileUpdateView(APIView):
         return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
 
 class DriverStatusView(APIView):
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
     
     def get(self, request):
         try:
@@ -274,8 +274,8 @@ class HospitalStatusView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
 class PoliceStatusView(APIView):
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
     
     def get(self, request):
         try:
