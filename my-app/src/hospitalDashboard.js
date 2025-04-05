@@ -16,7 +16,9 @@ import {
   TableHead,
   TableRow,
   Toolbar,
-  Typography
+  Typography,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   LocalHospital as HospitalIcon,
@@ -38,7 +40,33 @@ const HospitalDashboard = () => {
   const [activeEmergencies, setActiveEmergencies] = useState([]);
   const [navigatingEmergency, setNavigatingEmergency] = useState(null);
   const [showResources, setShowResources] = useState(false);
+  const [onDuty, setOnDuty] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'info',
+  });
+  useEffect(() => {
+    // Fetch driver status
+    const fetchHospitalStatus = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/hospital/status/', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        });
+        setOnDuty(response.data.driver_active);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching driver status:', error);
+        setLoading(false);
+      }
+    };
 
+    fetchHospitalStatus();
+
+  }, []);
   useEffect(() => {
     const fetchEmergencies = () => {
       axios
@@ -73,6 +101,45 @@ const HospitalDashboard = () => {
     const interval = setInterval(fetchEmergencies, 10000);
     return () => clearInterval(interval);
   }, []);
+  const handleDutyToggle = async () => {
+    try {
+      setLoading(true);
+      const newStatus = !onDuty;
+
+      const response = await axios.patch(
+        'http://localhost:8000/api/hospital/status/',
+        { driver_active: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      setOnDuty(newStatus);
+      setSnackbar({
+        open: true,
+        message: `You are now ${newStatus ? 'on duty' : 'off duty'}`,
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Error updating duty status:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to update status. Please try again.',
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Close snackbar
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
 
   const handleNavigate = (emergency) => {
     setNavigatingEmergency(emergency);
@@ -113,6 +180,29 @@ const HospitalDashboard = () => {
           </Avatar>
         </Toolbar>
       </AppBar>
+      <Card sx={{ mb: 4, borderRadius: 2, boxShadow: 3 }}>
+        <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <HospitalIcon sx={{ mr: 2, color: onDuty ? 'success.main' : 'text.secondary' }} />
+            <Typography variant="h6">
+              Driver Status: <Typography component="span" color={onDuty ? 'success.main' : 'text.secondary'} sx={{ fontWeight: 'bold' }}>
+                {onDuty ? 'On Duty' : 'Off Duty'}
+              </Typography>
+            </Typography>
+          </Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={onDuty}
+                onChange={handleDutyToggle}
+                color="success"
+                disabled={loading}
+              />
+            }
+            label={loading ? "Updating..." : ""}
+          />
+        </CardContent>
+      </Card>
 
       {navigatingEmergency ? (
         <MapDetails emergency={navigatingEmergency} onClose={handleCloseMap} />
