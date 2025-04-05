@@ -10,7 +10,44 @@ from base.models import (
     MedicalHistory,
 )
 
+class DriverSerializer(serializers.ModelSerializer):
+    face_image_url = serializers.SerializerMethodField()
+    driving_license_document_url = serializers.SerializerMethodField()
+    car_insurance_document_url = serializers.SerializerMethodField()
+    car_rc_document_url = serializers.SerializerMethodField()
 
+    class Meta:
+        model = Driver
+        fields = [
+            'username', 'email', 'first_name', 'last_name', 'gender', 'address',
+            'license_number', 'license_expiry', 'face_image', 'driving_license_document',
+            'car_insurance_document', 'car_rc_document', 'face_image_url',
+            'driving_license_document_url', 'car_insurance_document_url', 'car_rc_document_url'
+        ]
+
+    def get_face_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.face_image and hasattr(obj.face_image, 'url'):
+            return request.build_absolute_uri(obj.face_image.url)
+        return None
+
+    def get_driving_license_document_url(self, obj):
+        request = self.context.get('request')
+        if obj.driving_license_document and hasattr(obj.driving_license_document, 'url'):
+            return request.build_absolute_uri(obj.driving_license_document.url)
+        return None
+
+    def get_car_insurance_document_url(self, obj):
+        request = self.context.get('request')
+        if obj.car_insurance_document and hasattr(obj.car_insurance_document, 'url'):
+            return request.build_absolute_uri(obj.car_insurance_document.url)
+        return None
+
+    def get_car_rc_document_url(self, obj):
+        request = self.context.get('request')
+        if obj.car_rc_document and hasattr(obj.car_rc_document, 'url'):
+            return request.build_absolute_uri(obj.car_rc_document.url)
+        return None
 class MedicalHistorySerializer(serializers.ModelSerializer):
     document_url = serializers.SerializerMethodField()
 
