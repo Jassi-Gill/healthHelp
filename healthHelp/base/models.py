@@ -10,18 +10,20 @@ class User(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
     user_type = models.CharField(max_length=10, choices=[('patient', 'Patient'), ('driver', 'Driver'), ('hospital', 'Hospital'), ('police', 'Police')], default='patient')
     
-    user_type = models.CharField(max_length=10, choices=[('patient', 'Patient'), ('driver', 'Driver'), ('hospital', 'Hospital'), ('police', 'Police')], default='patient')
-    
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
-    
-
 
 class Driver(User):
+    address = models.TextField(blank=True, null=True)
     license_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     license_expiry = models.DateField(blank=True, null=True)
+    face_image = models.ImageField(upload_to='driver_face_images/', blank=True, null=True)
+    driving_license_document = models.FileField(upload_to='driving_licenses/', blank=True, null=True)
+    car_insurance_document = models.FileField(upload_to='car_insurance/', blank=True, null=True)
+    car_rc_document = models.FileField(upload_to='car_rc/', blank=True, null=True)
     status = models.CharField(max_length=10, choices=[('available', 'Available'), ('busy', 'Busy'), ('offline', 'Offline')], default='offline')
     rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
+    driver_active = models.BooleanField(default=True)
 
 class Hospital(User):
     name = models.CharField(max_length=100)
@@ -29,14 +31,14 @@ class Hospital(User):
     phone = models.CharField(max_length=20, blank=True, null=True)
     capacity = models.IntegerField()
     emergency_capacity = models.IntegerField()
-    hospital_active = models.BooleanField(default=True)  
-    hospital_email = models.EmailField(unique=True, blank=True, null=True)  
+    hospital_active = models.BooleanField(default=True)
+    hospital_email = models.EmailField(unique=True, blank=True, null=True)
 
 class Police(User):
     badge_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     station_name = models.CharField(max_length=255, blank=True, null=True)
     rank = models.CharField(max_length=50)
-
+    police_active = models.BooleanField(default=True)
 
 class Patient(User):
     address = models.TextField(blank=True, null=True)
@@ -46,12 +48,12 @@ class Patient(User):
     class Meta:
         db_table = 'patient'
 
+# Other models (MedicalHistory, EmergencyContact, etc.) remain unchanged
 class MedicalHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_histories')
     description = models.TextField()
     document = models.FileField(upload_to='medical_history/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
 
 class EmergencyContact(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -86,24 +88,22 @@ class DriverVehicleAssignment(models.Model):
     class Meta:
         unique_together = ('vehicle', 'is_current')
 
-
 class HospitalLocation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='locations')
     latitude = models.DecimalField(max_digits=10, decimal_places=8)
     longitude = models.DecimalField(max_digits=11, decimal_places=8)
 
-
 class EmergencyRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_requests', null=True, blank=True)  # Made optional
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_requests', null=True, blank=True)
     start_location_latitude = models.FloatField(null=True, blank=True)
     start_location_longitude = models.FloatField(null=True, blank=True)
     start_location_name = models.CharField(max_length=255, null=True, blank=True)
     end_location_latitude = models.FloatField(null=True, blank=True)
     end_location_longitude = models.FloatField(null=True, blank=True)
     end_location_name = models.CharField(max_length=255, null=True, blank=True)
-    emergency_type = models.CharField(max_length=20, choices=[('medical', 'Medical'), ('fire', 'Fire'), ('police', 'Police'), ('disaster', 'Disaster'), ('other', 'Other'), ('critical', 'Critical'), ('non-critical', 'Non-Critical')])  # Expanded choices
+    emergency_type = models.CharField(max_length=20, choices=[('medical', 'Medical'), ('fire', 'Fire'), ('police', 'Police'), ('disaster', 'Disaster'), ('other', 'Other'), ('critical', 'Critical'), ('non-critical', 'Non-Critical')])
     description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=[('created', 'Created'), ('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], default='created')
     priority = models.CharField(max_length=10, choices=[('low', 'Low'), ('medium', 'Medium'), ('high', 'High'), ('critical', 'Critical')], default='medium')
@@ -145,15 +145,13 @@ class VehicleLocationHistory(models.Model):
     speed = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     heading = models.IntegerField(blank=True, null=True)
 
-
 class Location(models.Model):
-    name = models.CharField(max_length=255)  # Human-readable address
+    name = models.CharField(max_length=255)
     latitude = models.FloatField()
     longitude = models.FloatField()
 
     def __str__(self):
         return self.name
-
 
 class Trip(models.Model):
     name = models.CharField(max_length=100)
@@ -162,12 +160,8 @@ class Trip(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_emergency = models.BooleanField(default=False)
     emergency_type = models.CharField(max_length=20, choices=[('critical', 'Critical'), ('non-critical', 'Non-Critical')], blank=True, null=True)
-    emergency_request = models.ForeignKey(EmergencyRequest, on_delete=models.SET_NULL, blank=True, null=True)  # Added foreign key
+    emergency_request = models.ForeignKey(EmergencyRequest, on_delete=models.SET_NULL, blank=True, null=True)
 
-    def __str__(self):
-        return self.name
-
-# ... (other models remain unchanged)
     def __str__(self):
         return self.name
 
