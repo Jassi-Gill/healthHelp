@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from base.views import (
     PatientProfileUpdateView, EmergencyRequestViewSet, MedicalHistoryViewSet,
     DriverStatusView, PoliceStatusView, HospitalStatusView, DriverProfileUpdateView,
-    PoliceProfileUpdateView, NearbyHospitalsView
+    PoliceProfileUpdateView, NearbyHospitalsView, PatientTreatmentViewSet
 )
 from django.conf import settings
 from django.conf.urls.static import static
@@ -12,6 +12,7 @@ from django.conf.urls.static import static
 router = DefaultRouter()
 router.register(r'emergency-requests', EmergencyRequestViewSet)
 router.register(r'medical-histories', MedicalHistoryViewSet)
+router.register(r'patient-treatments', PatientTreatmentViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),

@@ -45,6 +45,7 @@ import {
 } from '@mui/icons-material';
 import MapDetails from './mapdetails';
 import ViewAllResources from './ViewAllResources';
+import axios from 'axios';
 
 const HospitalDashboard = () => {
   const [activeEmergencies, setActiveEmergencies] = useState([]);
@@ -59,7 +60,7 @@ const HospitalDashboard = () => {
   });
   const [treatmentFormOpen, setTreatmentFormOpen] = useState(false);
   const [selectedEmergency, setSelectedEmergency] = useState(null);
-  const [treatmentFormData, setTreatmentFormData] = useState({
+  const initialTreatmentFormData = {
     date: '',
     type: '',
     response: '',
@@ -70,66 +71,184 @@ const HospitalDashboard = () => {
     diagnosis: '',
     treatment_details: '',
     follow_up_required: false,
-  });
+    // Patient Information
+    patient_name: '',
+    patient_age: '',
+    patient_gender: '', // Initialize to empty string
+    patient_contact: '',
+    patient_blood_type: '', // Initialize to empty string
+    allergies: '',
+    medical_history: '',
+    // Vital Signs (nested object)
+    vital_signs: {
+      blood_pressure: '',
+      heart_rate: '',
+      respiratory_rate: '',
+      temperature: '',
+      oxygen_saturation: '',
+    },
+    // Additional Treatment Fields
+    emergency_type: '',
+    request_date: '',
+    response_time: '',
+    location: '',
+    medications: '',
+    procedures_performed: '',
+    doctor_assigned: '',
+    nurse_assigned: '',
+    follow_up_date: '',
+    follow_up_instructions: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+    insurance_provider: '',
+    insurance_policy_number: '',
+  };
 
-  // Simulated active emergencies matching the second image (Image 1)
+  const [treatmentFormData, setTreatmentFormData] = useState(initialTreatmentFormData);
+
   useEffect(() => {
-    const simulatedEmergencies = [
-      {
-        id: 1,
-        start_location: { name: 'Indian Institute of Information Technology (IIIT G) - IT, Park Street Bongora, 3HJ6+FV9, Borjhar, Guwahati, Salesala, Assam 781015, India' },
-        type: 'critical',
-        status: 'created',
-      },
-      {
-        id: 2,
-        start_location: { name: 'Indian Institute of Information Technology (IIIT G) - IT, Park Street Bongora, 3HJ6+FV9, Borjhar, Guwahati, Salesala, Assam 781015, India' },
-        type: 'critical',
-        status: 'created',
-      },
-      {
-        id: 3,
-        start_location: { name: '3HJ6+GRQ, Borjhar, Guwahati, Salesala, Assam 781015, India' },
-        type: 'critical',
-        status: 'created',
-      },
-      {
-        id: 4,
-        start_location: { name: '3HJ6+GRQ, Borjhar, Guwahati, Salesala, Assam 781015, India' },
-        type: 'non-critical',
-        status: 'created',
-      },
-      {
-        id: 5,
-        start_location: { name: '3HJ5+HBF, Dimu Dobak, Guwahati, Assam 781015, India' },
-        type: 'critical',
-        status: 'created',
-      },
-      {
-        id: 6,
-        start_location: { name: '3HJ5+HBF, Dimu Dobak, Guwahati, Assam 781015, India' },
-        type: 'critical',
-        status: 'created',
-      },
-      {
-        id: 7,
-        start_location: { name: '3HJ6+22, Borjhar, Guwahati, Bongara, Assam 781015, India' },
-        type: 'critical',
-        status: 'created',
-      },
-    ];
-    setActiveEmergencies(simulatedEmergencies);
-    setLoading(false);
+    const fetchHospitalStatus = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/hospital/status/', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        setOnDuty(response.data.hospital_active);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching police status:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchHospitalStatus();
   }, []);
 
-  const handleDutyToggle = () => {
-    const newStatus = !onDuty;
-    setOnDuty(newStatus);
-    setSnackbar({
-      open: true,
-      message: `You are now ${newStatus ? 'on duty' : 'off duty'}`,
-      severity: 'success',
-    });
+
+  useEffect(() => {
+    const fetchActiveEmergencies = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('http://localhost:8000/api/emergency-requests/', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { status: 'created' }
+        });
+        const transformedEmergencies = response.data.map(emergency => ({
+          id: emergency.id,
+          start_location: {
+            lat: emergency.start_location_latitude,
+            lng: emergency.start_location_longitude,
+            name: emergency.start_location_name
+          },
+          end_location: {
+            lat: emergency.end_location_latitude,
+            lng: emergency.end_location_longitude,
+            name: emergency.end_location_name
+          },
+          emergency_type: emergency.emergency_type,
+          status: emergency.status,
+          patient: emergency.patient, // Preserve patient data for the form
+          // Add other fields as needed
+          
+        }));
+        console.log(response.data);
+        setActiveEmergencies(transformedEmergencies);
+        console.log('Transformed Emergencies:', transformedEmergencies);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching active emergencies:', error);
+        setSnackbar({
+          open: true,
+          message: 'Failed to fetch active emergencies',
+          severity: 'error',
+        });
+        setLoading(false);
+      }
+    };
+    fetchActiveEmergencies();
+  }, []);
+
+  // Simulated active emergencies matching the second image (Image 1)
+  // useEffect(() => {
+  //   const simulatedEmergencies = [
+  //     {
+  //       id: 1,
+  //       start_location_name: 'Indian Institute of Information Technology (IIIT G) - IT, Park Street Bongora, 3HJ6+FV9, Borjhar, Guwahati, Salesala, Assam 781015, India',
+  //       emergency_type: 'critical',
+  //       status: 'created',
+  //     },
+  //     {
+  //       id: 2,
+  //       start_location_name: 'Indian Institute of Information Technology (IIIT G) - IT, Park Street Bongora, 3HJ6+FV9, Borjhar, Guwahati, Salesala, Assam 781015, India',
+  //       emergency_type: 'critical',
+  //       status: 'created',
+  //     },
+  //     {
+  //       id: 3,
+  //       start_location_name: '3HJ6+GRQ, Borjhar, Guwahati, Salesala, Assam 781015, India',
+  //       emergency_type: 'critical',
+  //       status: 'created',
+  //     },
+  //     {
+  //       id: 4,
+  //       start_location_name: '3HJ6+GRQ, Borjhar, Guwahati, Salesala, Assam 781015, India',
+  //       emergency_type: 'non-critical',
+  //       status: 'created',
+  //     },
+  //     {
+  //       id: 5,
+  //       start_location_name: '3HJ5+HBF, Dimu Dobak, Guwahati, Assam 781015, India',
+  //       emergency_type: 'critical',
+  //       status: 'created',
+  //     },
+  //     {
+  //       id: 6,
+  //       start_location_name: '3HJ5+HBF, Dimu Dobak, Guwahati, Assam 781015, India',
+  //       emergency_type: 'critical',
+  //       status: 'created',
+  //     },
+  //     {
+  //       id: 7,
+  //       start_location_name: '3HJ6+22, Borjhar, Guwahati, Bongara, Assam 781015, India',
+  //       emergency_type: 'critical',
+  //       status: 'created',
+  //     },
+  //   ];
+  //   setActiveEmergencies(simulatedEmergencies);
+  //   setLoading(false);
+  // }, []);
+
+  const handleDutyToggle = async () => {
+    try {
+      setLoading(true);
+      const newStatus = !onDuty;
+      const response = await axios.patch(
+        'http://localhost:8000/api/hospital/status/',
+        { hospital_active: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      setOnDuty(newStatus);
+      setSnackbar({
+        open: true,
+        message: `You are now ${newStatus ? 'on duty' : 'off duty'}`,
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Error updating duty status:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to update status. Please try again.',
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCloseSnackbar = () => {
@@ -137,7 +256,15 @@ const HospitalDashboard = () => {
   };
 
   const handleNavigate = (emergency) => {
-    setNavigatingEmergency(emergency);
+    if (emergency.start_location?.lat && emergency.start_location?.lng) {
+      setNavigatingEmergency(emergency);
+    } else {
+      setSnackbar({
+        open: true,
+        message: 'No valid location data available for this emergency',
+        severity: 'warning',
+      });
+    }
   };
 
   const handleCloseMap = () => {
@@ -154,17 +281,23 @@ const HospitalDashboard = () => {
 
   const handleOpenTreatmentForm = (emergency) => {
     setSelectedEmergency(emergency);
+    const patient = emergency.patient || {};
     setTreatmentFormData({
-      date: '',
-      type: '',
-      response: '',
-      status: '',
-      duration: '',
-      admission_date: '',
-      discharge_date: '',
-      diagnosis: '',
-      treatment_details: '',
-      follow_up_required: false,
+      ...initialTreatmentFormData,
+      // Emergency details
+      emergency_type: emergency.emergency_type || '',
+      status: emergency.status || '',
+      location: emergency.start_location_name || '',
+      request_date: emergency.created_at || '', // Add created_at if needed
+      // Patient details
+      patient_name: patient ? `${patient.first_name} ${patient.last_name}` : '',
+      patient_gender: patient.gender || '',
+      patient_contact: patient.mobile_numbers?.[0]?.mobile_number || '', // Assuming primary mobile number
+      allergies: patient.allergies || '', // Add if Patient model is extended
+      medical_history: patient.medical_histories?.map(history => history.description).join('; ') || '',
+      // Document URLs (for display, not submission)
+      face_image_url: patient.face_image_url || '',
+      insurance_document_url: patient.insurance_document_url || '',
     });
     setTreatmentFormOpen(true);
   };
@@ -176,20 +309,69 @@ const HospitalDashboard = () => {
 
   const handleTreatmentFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setTreatmentFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    if (name.includes('.')) {
+      // Handle nested fields (e.g., vital_signs.blood_pressure)
+      const [parent, child] = name.split('.');
+      setTreatmentFormData((prev) => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: type === 'checkbox' ? checked : value,
+        },
+      }));
+    } else {
+      // Handle flat fields
+      setTreatmentFormData((prev) => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value,
+      }));
+    }
   };
 
-  const handleSubmitTreatmentForm = () => {
-    console.log('Submitting treatment form for emergency:', selectedEmergency.id, treatmentFormData);
-    setSnackbar({
-      open: true,
-      message: 'Treatment form submitted successfully (simulated)',
-      severity: 'success',
-    });
-    handleCloseTreatmentForm();
+  const handleSubmitTreatmentForm = async () => {
+    // Construct vital_signs string from individual fields
+    const vitalSigns = `BP: ${treatmentFormData.vital_signs?.blood_pressure || ''}, HR: ${treatmentFormData.vital_signs?.heart_rate || ''}, RR: ${treatmentFormData.vital_signs?.respiratory_rate || ''}, Temp: ${treatmentFormData.vital_signs?.temperature || ''}°C, SpO2: ${treatmentFormData.vital_signs?.oxygen_saturation || ''}%`;
+
+    const formData = {
+      patient: selectedEmergency.patient?.id || null,  // Assumes patient info is included in emergency data
+      emergency_request: selectedEmergency.id,
+      admission_date: treatmentFormData.admission_date || new Date().toISOString(),
+      discharge_date: treatmentFormData.discharge_date || null,
+      diagnosis: treatmentFormData.diagnosis || '',
+      treatment_details: treatmentFormData.treatment_details || '',
+      follow_up_required: treatmentFormData.follow_up_required || false,
+      vital_signs: vitalSigns,
+      medications_administered: treatmentFormData.medications || '',
+      procedures_performed: treatmentFormData.procedures_performed || '',
+      doctor_assigned: treatmentFormData.doctor_assigned || '',
+      nurse_assigned: treatmentFormData.nurse_assigned || '',
+      follow_up_date: treatmentFormData.follow_up_date || null,
+      follow_up_instructions: treatmentFormData.follow_up_instructions || '',
+      emergency_contact_name: treatmentFormData.emergency_contact_name || '',
+      emergency_contact_phone: treatmentFormData.emergency_contact_phone || '',
+      insurance_provider: treatmentFormData.insurance_provider || '',
+      insurance_policy_number: treatmentFormData.insurance_policy_number || '',
+    };
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post('http://localhost:8000/api/patient-treatments/', formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSnackbar({
+        open: true,
+        message: 'Treatment form submitted successfully',
+        severity: 'success',
+      });
+      handleCloseTreatmentForm();
+    } catch (error) {
+      console.error('Error submitting treatment form:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to submit treatment form',
+        severity: 'error',
+      });
+    }
   };
 
   if (showResources) {
@@ -330,8 +512,8 @@ const HospitalDashboard = () => {
                       <TableBody>
                         {activeEmergencies.map((emergency) => (
                           <TableRow key={emergency.id}>
-                            <TableCell>{emergency.start_location.name}</TableCell>
-                            <TableCell>{emergency.type}</TableCell>
+                            <TableCell>{emergency.start_location_name || 'N/A'}</TableCell>
+                            <TableCell>{emergency.emergency_type || 'Unknown'}</TableCell>
                             <TableCell>{emergency.status}</TableCell>
                             <TableCell>
                               <Button
@@ -339,6 +521,7 @@ const HospitalDashboard = () => {
                                 color="primary"
                                 startIcon={<NavigationIcon />}
                                 onClick={() => handleNavigate(emergency)}
+                                // disabled={!emergency.start_location?.lat || !emergency.start_location?.lng}
                                 sx={{ mr: 1 }}
                               >
                                 Navigate
@@ -580,15 +763,41 @@ const HospitalDashboard = () => {
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                label="Medical History"
-                multiline
-                rows={2}
-                fullWidth
-                name="medical_history"
-                value={treatmentFormData.medical_history}
-                onChange={handleTreatmentFormChange}
-              />
+              <Typography>Medical History</Typography>
+              {selectedEmergency?.patient?.medical_histories?.length > 0 ? (
+                selectedEmergency.patient.medical_histories.map((history, index) => (
+                  <Box key={index} sx={{ mb: 1 }}>
+                    <Typography>{history.description || 'No description available'}</Typography>
+                    {history.document_url && (
+                      <a href={history.document_url} target="_blank" rel="noopener noreferrer">
+                        View Document
+                      </a>
+                    )}
+                  </Box>
+                ))
+              ) : (
+                <Typography color="text.secondary">No medical history available</Typography>
+              )}
+            </Grid>
+            {/* Inside the Patient Information section of the Modal */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2">Patient Documents</Typography>
+              {treatmentFormData.face_image_url && (
+                <Box>
+                  <Typography>Face Image:</Typography>
+                  <a href={treatmentFormData.face_image_url} target="_blank" rel="noopener noreferrer">
+                    View Face Image
+                  </a>
+                </Box>
+              )}
+              {treatmentFormData.insurance_document_url && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography>Insurance Document:</Typography>
+                  <a href={treatmentFormData.insurance_document_url} target="_blank" rel="noopener noreferrer">
+                    View Insurance Document
+                  </a>
+                </Box>
+              )}
             </Grid>
 
             {/* Vital Signs */}

@@ -131,7 +131,6 @@ const PatientDashboard = ({ goBack }) => {
               Authorization: `Bearer ${token}`
             }
           });
-          console.log(response.data.message)
           if (response.data.message === "No") {
             setNearbyHospitals([]);
           } else {
@@ -312,13 +311,21 @@ const PatientDashboard = ({ goBack }) => {
     formData.append('end_location_longitude', destinationLocation.lng);
     formData.append('end_location_name', destinationLocation.name);
     formData.append('emergency_type', type);
-
+    if (destinationLocation.hospitalId) {
+      formData.append('hospital', destinationLocation.hospitalId);
+    }
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.post(
         'http://localhost:8000/api/emergency-requests/',
-        formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        }
+      }
       );
+      console.log('Emergency Created:', response.data);
       setShowEmergencyForm(false);
       setShowEmergencyCalling(true);
       setStartLocation(null);
@@ -662,6 +669,7 @@ const PatientDashboard = ({ goBack }) => {
                               lat: hospital.latitude,
                               lng: hospital.longitude,
                               name: hospital.name,
+                              hospitalId: hospital.id  // Add hospitalId here
                             })}
                             sx={{
                               backgroundColor: destinationLocation && destinationLocation.name === hospital.name ? 'grey.200' : 'inherit',

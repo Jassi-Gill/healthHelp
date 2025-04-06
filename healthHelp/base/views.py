@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from google.cloud import vision
-
+from django_filters.rest_framework import DjangoFilterBackend
 # import face_recognition
 from PIL import Image
 import numpy as np
@@ -21,13 +21,15 @@ from .models import (
     Hospital,
     Police,
     HospitalLocation,
+    PatientTreatment
 )
 from base.api.serializers import (
     EmergencyRequestSerializer,
     PatientSerializer,
     MedicalHistorySerializer,
     DriverSerializer,
-    PoliceSerializer
+    PoliceSerializer,
+    PatientTreatmentSerializer,
 )
 
 from math import radians, cos, sin, asin, sqrt
@@ -336,11 +338,9 @@ class PoliceProfileUpdateView(APIView):
         police.first_name = request.data.get('first_name', police.first_name)
         police.last_name = request.data.get('last_name', police.last_name)
         police.gender = request.data.get('gender', police.gender) if(request.data.get('gender')) else None
-        #police.address = request.data.get('address', police.address)
+
         police.rank = request.data.get('rank', police.rank)
         police.station_name = request.data.get('station_name', police.station_name)
-        # police.latitude = request.data.get('latitude', police.latitude) if(request.data.get('latitude')) else None
-        # police.longitude = request.data.get('longitude', police.longitude) if(request.data.get('longitude')) else None
 
         # Handle file uploads
         if 'badge_document' in request.FILES:
@@ -514,7 +514,38 @@ class MedicalHistoryViewSet(viewsets.ModelViewSet):
 class EmergencyRequestViewSet(viewsets.ModelViewSet):
     queryset = EmergencyRequest.objects.all()
     serializer_class = EmergencyRequestSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    # filter_backends = [DjangoFilterBackend]
+    # filterset_fields = ['status']  
+
+    def get_queryset(self):
+
+        queryset = super().get_queryset()
+
+        user = self.request.user
+        
+        if user.is_authenticated and hasattr(user, 'user_type') and user.user_type == 'hospital':
+            queryset = queryset.filter(hospital=user)
+            
+        
+        return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'user_type'):
+            if user.user_type == "patient":
+                try:
+                    patient = user.patient  # Access the Patient profile
+                    serializer.save(patient=patient)
+                    print("Patient User Saved", patient.id)
+                    # return serializer
+                except AttributeError:
+                    print("Patient not found in perform create in emergencyRequestViewSet", AttributeError)
+            else:
+                serializer.save() # Non-patient users (e.g., anonymous or other types) leave patient as null
+        else:
+            serializer.save()  # Unauthenticated users leave patient as null
 
     def create(self, request, *args, **kwargs):
         photo = request.FILES.get("photo")
@@ -571,11 +602,15 @@ class EmergencyRequestViewSet(viewsets.ModelViewSet):
             serializer.data, status=status.HTTP_201_CREATED, headers=headers
         )
 
+
+
+class PatientTreatmentViewSet(viewsets.ModelViewSet):
+    queryset = PatientTreatment.objects.all()
+    serializer_class = PatientTreatmentSerializer
+    permission_classes = [IsAuthenticated]
+
     def perform_create(self, serializer):
-        if (
-            self.request.user.is_authenticated
-            and self.request.user.user_type == "patient"
-        ):
-            serializer.save(patient=self.request.user.patient)
+        if self.request.user.user_type == 'hospital':
+            serializer.save(hospital=self.request.user)
         else:
             serializer.save()

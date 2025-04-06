@@ -8,7 +8,9 @@ from base.models import (
     Hospital,
     EmergencyRequest,
     MedicalHistory,
+    PatientTreatment,
 )
+
 
 class DriverSerializer(serializers.ModelSerializer):
     face_image_url = serializers.SerializerMethodField()
@@ -150,6 +152,7 @@ class PoliceSerializer(ModelSerializer):
 
 
 class EmergencyRequestSerializer(serializers.ModelSerializer):
+    patient = PatientSerializer(read_only=True)
     class Meta:
         model = EmergencyRequest
         fields = [
@@ -167,4 +170,11 @@ class EmergencyRequestSerializer(serializers.ModelSerializer):
             "priority",
             "created_at",
             "updated_at",
+            "hospital" 
         ]
+
+
+class PatientTreatmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatientTreatment
+        fields = '__all__'
