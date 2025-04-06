@@ -79,12 +79,16 @@ class DriverProfileUpdateView(APIView):
         # Handle file uploads
         if 'face_image' in request.FILES:
             driver.face_image = request.FILES['face_image']
+            print("file uploaded")
         if 'driving_license_document' in request.FILES:
             driver.driving_license_document = request.FILES['driving_license_document']
+            print("file uploaded")
         if 'car_insurance_document' in request.FILES:
             driver.car_insurance_document = request.FILES['car_insurance_document']
+            print("file uploaded")
         if 'car_rc_document' in request.FILES:
             driver.car_rc_document = request.FILES['car_rc_document']
+            print("file uploaded")
 
         driver.save()
 

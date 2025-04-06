@@ -22,11 +22,10 @@ import PatientDashboard from './patientDashboard';
 import DriverDashboard from './driverDashboard';
 import PoliceDashboard from './policeDashboard';
 import SignupPage from './SignupPage';
-import MapNav from './mapNav';
 
 
 const LoginPage = () => {
-  const [userType, setUserType] = useState('patient');
+  // const [userType, setUserType] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -115,7 +114,7 @@ const LoginPage = () => {
 
   const handleLogout = () => {
     // Clear all stored data
-    localStorage.removeItem('authTokens');
+    localStorage.removeItem('token');
     localStorage.removeItem('userData');
     localStorage.removeItem('userType');
 
@@ -148,12 +147,6 @@ const LoginPage = () => {
         />;
       case 'policeDashboard':
         return <PoliceDashboard
-          userData={userData}
-          tokens={authTokens}
-          logout={handleLogout}
-        />;
-      case 'mapNav':
-        return <MapNav
           userData={userData}
           tokens={authTokens}
           logout={handleLogout}
@@ -254,16 +247,6 @@ const LoginPage = () => {
                     onClick={() => setCurrentView('patientDashboard')}
                   >
                     Patient Dashboard
-                  </Button>
-                </Grid>
-                <Grid item xs={6}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    color="secondary"
-                    onClick={() => setCurrentView('mapNav')}
-                  >
-                    MAAPPPYYY Dashboard
                   </Button>
                 </Grid>
                 <Grid item xs={6}>

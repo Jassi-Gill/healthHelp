@@ -34,6 +34,12 @@ class Hospital(User):
     hospital_active = models.BooleanField(default=True)
     hospital_email = models.EmailField(unique=True, blank=True, null=True)
 
+class HospitalLocation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='locations')
+    latitude = models.DecimalField(max_digits=10, decimal_places=8)
+    longitude = models.DecimalField(max_digits=11, decimal_places=8)
+
 class Police(User):
     badge_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     station_name = models.CharField(max_length=255, blank=True, null=True)
@@ -48,7 +54,6 @@ class Patient(User):
     class Meta:
         db_table = 'patient'
 
-# Other models (MedicalHistory, EmergencyContact, etc.) remain unchanged
 class MedicalHistory(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_histories')
     description = models.TextField()
@@ -88,11 +93,6 @@ class DriverVehicleAssignment(models.Model):
     class Meta:
         unique_together = ('vehicle', 'is_current')
 
-class HospitalLocation(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='locations')
-    latitude = models.DecimalField(max_digits=10, decimal_places=8)
-    longitude = models.DecimalField(max_digits=11, decimal_places=8)
 
 class EmergencyRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -121,55 +121,27 @@ class PatientTreatment(models.Model):
     treatment_details = models.TextField()
     follow_up_required = models.BooleanField(default=False)
 
-class DispatchSystem(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100)
-    status = models.CharField(max_length=20, choices=[('operational', 'Operational'), ('maintenance', 'Maintenance'), ('down', 'Down')], default='operational')
-    region = models.CharField(max_length=100, blank=True, null=True)
-    capacity = models.IntegerField()
+# class DispatchSystem(models.Model):
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     name = models.CharField(max_length=100)
+#     status = models.CharField(max_length=20, choices=[('operational', 'Operational'), ('maintenance', 'Maintenance'), ('down', 'Down')], default='operational')
+#     region = models.CharField(max_length=100, blank=True, null=True)
+#     capacity = models.IntegerField()
 
-class EmergencyStatusUpdate(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    request = models.ForeignKey(EmergencyRequest, on_delete=models.CASCADE, related_name='status_updates')
-    status = models.CharField(max_length=20, choices=[('created', 'Created'), ('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')])
-    notes = models.TextField(blank=True, null=True)
-    updated_by = models.UUIDField()
-    updated_at = models.DateTimeField(auto_now=True)
+# class EmergencyStatusUpdate(models.Model):
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     request = models.ForeignKey(EmergencyRequest, on_delete=models.CASCADE, related_name='status_updates')
+#     status = models.CharField(max_length=20, choices=[('created', 'Created'), ('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')])
+#     notes = models.TextField(blank=True, null=True)
+#     updated_by = models.UUIDField()
+#     updated_at = models.DateTimeField(auto_now=True)
 
-class VehicleLocationHistory(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='location_history')
-    latitude = models.DecimalField(max_digits=10, decimal_places=8)
-    longitude = models.DecimalField(max_digits=11, decimal_places=8)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    speed = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    heading = models.IntegerField(blank=True, null=True)
+# class VehicleLocationHistory(models.Model):
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='location_history')
+#     latitude = models.DecimalField(max_digits=10, decimal_places=8)
+#     longitude = models.DecimalField(max_digits=11, decimal_places=8)
+#     timestamp = models.DateTimeField(auto_now_add=True)
+#     speed = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+#     heading = models.IntegerField(blank=True, null=True)
 
-class Location(models.Model):
-    name = models.CharField(max_length=255)
-    latitude = models.FloatField()
-    longitude = models.FloatField()
-
-    def __str__(self):
-        return self.name
-
-class Trip(models.Model):
-    name = models.CharField(max_length=100)
-    start_location = models.ForeignKey(Location, related_name='start_trips', on_delete=models.CASCADE)
-    end_location = models.ForeignKey(Location, related_name='end_trips', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_emergency = models.BooleanField(default=False)
-    emergency_type = models.CharField(max_length=20, choices=[('critical', 'Critical'), ('non-critical', 'Non-Critical')], blank=True, null=True)
-    emergency_request = models.ForeignKey(EmergencyRequest, on_delete=models.SET_NULL, blank=True, null=True)
-
-    def __str__(self):
-        return self.name
-
-class TripStatus(models.Model):
-    trip = models.OneToOneField(Trip, on_delete=models.CASCADE)
-    current_latitude = models.FloatField(null=True, blank=True)
-    current_longitude = models.FloatField(null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Status for {self.trip.name}"

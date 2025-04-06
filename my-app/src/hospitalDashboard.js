@@ -187,7 +187,7 @@ const HospitalDashboard = () => {
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <HospitalIcon sx={{ mr: 2, color: onDuty ? 'success.main' : 'text.secondary' }} />
             <Typography variant="h6">
-              Driver Status: <Typography component="span" color={onDuty ? 'success.main' : 'text.secondary'} sx={{ fontWeight: 'bold' }}>
+              Hospital Status: <Typography component="span" color={onDuty ? 'success.main' : 'text.secondary'} sx={{ fontWeight: 'bold' }}>
                 {onDuty ? 'On Duty' : 'Off Duty'}
               </Typography>
             </Typography>

@@ -241,7 +241,7 @@ const DriverDashboard = () => {
   const handleDeleteDocument = async (documentType) => {
     if (window.confirm(`Are you sure you want to delete the ${documentType.replace('_', ' ')}?`)) {
       try {
-        const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('token');
         const formData = new FormData();
         formData.append(`delete_${documentType}`, 'true');
         await axios.put('http://localhost:8000/api/drivers/profile/', formData, {
@@ -262,7 +262,7 @@ const DriverDashboard = () => {
   };
 
   const handleProfileUpdate = () => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       alert('Please log in to update your profile.');
       return;

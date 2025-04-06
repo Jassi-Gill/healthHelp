@@ -47,7 +47,10 @@ class DriverSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if obj.car_rc_document and hasattr(obj.car_rc_document, 'url'):
             return request.build_absolute_uri(obj.car_rc_document.url)
+    
         return None
+    
+
 class MedicalHistorySerializer(serializers.ModelSerializer):
     document_url = serializers.SerializerMethodField()
 
