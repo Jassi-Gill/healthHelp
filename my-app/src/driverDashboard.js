@@ -147,6 +147,7 @@ const DriverDashboard = () => {
       })
         .then(response => {
           const data = response.data;
+          console.log('Profile data:', data);
           setProfileData({
             username: data.username,
             email: data.email,
@@ -155,10 +156,10 @@ const DriverDashboard = () => {
             gender: data.gender,
             address: data.address,
           });
-          setFaceImageUrl(data.face_image_url);
-          setDrivingLicenseUrl(data.driving_license_document_url);
-          setCarInsuranceUrl(data.car_insurance_document_url);
-          setCarRcUrl(data.car_rc_document_url);
+          setFaceImageUrl(data.face_image);
+          setDrivingLicenseUrl(data.driving_license_document);
+          setCarInsuranceUrl(data.car_insurance_document);
+          setCarRcUrl(data.car_rc_document);
           setFaceImageFile(null);
           setDrivingLicenseFile(null);
           setCarInsuranceFile(null);

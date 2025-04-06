@@ -13,7 +13,7 @@ from rest_framework.authentication import TokenAuthentication, SessionAuthentica
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import update_session_auth_hash
 from .models import MedicalHistory, EmergencyRequest, Patient, Driver, Hospital, Police
-from base.api.serializers import EmergencyRequestSerializer, PatientSerializer, MedicalHistorySerializer, DriverSerializer
+from base.api.serializers import EmergencyRequestSerializer, PatientSerializer, MedicalHistorySerializer, DriverSerializer,PoliceSerializer
 
 class DriverProfileUpdateView(APIView):
     # permission_classes = [IsAuthenticated]
@@ -196,7 +196,77 @@ class PatientProfileUpdateView(APIView):
                 )
 
         return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+class PoliceProfileUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
+    def get(self, request, *args, **kwargs):
+        if request.user.user_type != 'police':
+            return Response(
+                {'error': 'This endpoint is only for police'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        try:
+            police = request.user.police
+        except AttributeError:
+            return Response(
+                {'error': 'Police profile not found for this user'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = PoliceSerializer(police, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, *args, **kwargs):
+        if request.user.user_type != 'police':
+            return Response(
+                {'error': 'This endpoint is only for police'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        try:
+            police = request.user.police
+        except AttributeError:
+            return Response(
+                {'error': 'Police profile not found for this user'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Handle document deletions
+        if request.data.get('delete_badge_document') == 'true':
+            if police.badge_document:
+                police.badge_document.delete(save=False)
+            police.badge_document = None
+
+        # Update police fields
+        police.username = request.data.get('username', police.username)
+        police.email = request.data.get('email', police.email)
+        police.first_name = request.data.get('first_name', police.first_name)
+        police.last_name = request.data.get('last_name', police.last_name)
+        police.gender = request.data.get('gender', police.gender) if(request.data.get('gender')) else None
+        #police.address = request.data.get('address', police.address)
+        police.rank = request.data.get('rank', police.rank)
+        police.station_name = request.data.get('station_name', police.station_name)
+        # police.latitude = request.data.get('latitude', police.latitude) if(request.data.get('latitude')) else None
+        # police.longitude = request.data.get('longitude', police.longitude) if(request.data.get('longitude')) else None
+
+        # Handle file uploads
+        if 'badge_document' in request.FILES:
+            police.badge_document = request.FILES['badge_document']
+
+        police.save()
+
+        # Handle password change
+        if 'currentPassword' in request.data and 'newPassword' in request.data:
+            if request.user.check_password(request.data['currentPassword']):
+                request.user.set_password(request.data['newPassword'])
+                request.user.save()
+                update_session_auth_hash(request, request.user)
+            else:
+                return Response(
+                    {'error': 'Current password is incorrect'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
 class DriverStatusView(APIView):
     # permission_classes = [IsAuthenticated]
     # authentication_classes = [JWTAuthentication]
