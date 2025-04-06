@@ -97,8 +97,8 @@ def login(request):
                 'name': hospital.name,
                 'address': hospital.address,
                 'phone': hospital.phone,
-                'capacity': hospital.capacity,
-                'emergency_capacity': hospital.emergency_capacity,
+                # 'capacity': hospital.capacity,
+                # 'emergency_capacity': hospital.emergency_capacity,
                 'hospital_active': hospital.hospital_active,
                 'hospital_email': hospital.hospital_email,
                 'hospital_active': hospital.is_active,  # User account status
@@ -196,8 +196,8 @@ def signup(request):
                     name=request.data.get('name', f"{username}'s Hospital"),
                     address=request.data.get('address', ''),
                     phone=request.data.get('phone', ''),
-                    capacity=request.data.get('capacity', 100),
-                    emergency_capacity=request.data.get('emergency_capacity', 20),
+                    # capacity=request.data.get('capacity', 100),
+                    # emergency_capacity=request.data.get('emergency_capacity', 20),
                     hospital_active=True,
                     hospital_email=request.data.get('hospital_email', email)
                 )
