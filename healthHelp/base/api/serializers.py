@@ -128,9 +128,25 @@ class DriverSerializer(ModelSerializer):
 
 
 class PoliceSerializer(ModelSerializer):
+    badge_document_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Police
-        fields = "__all__"
+        fields = [
+            'username', 'email', 'first_name', 'last_name', 'gender',
+            'badge_number', 'station_name', 'rank', 'latitude', 'longitude',
+            'badge_document', 'badge_document_url', 'police_active'
+        ]
+        extra_kwargs = {
+            'latitude': {'required': False},
+            'longitude': {'required': False},
+        }
+
+    def get_badge_document_url(self, obj):
+        request = self.context.get('request')
+        if obj.badge_document and hasattr(obj.badge_document, 'url'):
+            return request.build_absolute_uri(obj.badge_document.url)
+        return None
 
 
 class EmergencyRequestSerializer(serializers.ModelSerializer):

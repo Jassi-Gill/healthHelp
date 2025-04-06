@@ -45,6 +45,9 @@ class Police(User):
     station_name = models.CharField(max_length=255, blank=True, null=True)
     rank = models.CharField(max_length=50)
     police_active = models.BooleanField(default=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    badge_document = models.FileField(upload_to='police_badges/', blank=True, null=True)
 
 class Patient(User):
     address = models.TextField(blank=True, null=True)
@@ -93,7 +96,6 @@ class DriverVehicleAssignment(models.Model):
     class Meta:
         unique_together = ('vehicle', 'is_current')
 
-
 class EmergencyRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_requests', null=True, blank=True)
@@ -120,7 +122,6 @@ class PatientTreatment(models.Model):
     diagnosis = models.TextField()
     treatment_details = models.TextField()
     follow_up_required = models.BooleanField(default=False)
-
 # class DispatchSystem(models.Model):
 #     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 #     name = models.CharField(max_length=100)
