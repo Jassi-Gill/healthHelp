@@ -29,8 +29,8 @@ from base.api.serializers import (
     MedicalHistorySerializer,
     DriverSerializer,
     PoliceSerializer,
-    PatientTreatmentSerializer,,
-    HospitalSerializer
+    PatientTreatmentSerializer,
+    HospitalSerializer,
 )
 
 from math import radians, cos, sin, asin, sqrt
