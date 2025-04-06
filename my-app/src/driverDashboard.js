@@ -147,7 +147,7 @@ const DriverDashboard = () => {
       })
         .then(response => {
           const data = response.data;
-          console.log('Profile data:', data);
+          console.log('Driver profile data:', data);  // Add this line
           setProfileData({
             username: data.username,
             email: data.email,

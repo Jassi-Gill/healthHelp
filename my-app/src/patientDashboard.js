@@ -30,6 +30,9 @@ import {
   FormHelperText,
   Checkbox,
   FormControlLabel,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import {
   Notifications as BellIcon,
@@ -87,6 +90,8 @@ const PatientDashboard = ({ goBack }) => {
   const [newPassword, setNewPassword] = useState('');
   const [showWebcam, setShowWebcam] = useState(false);
 
+  const [nearbyHospitals, setNearbyHospitals] = useState([]);
+
   // Changed emergencyHistory to state
   const [emergencyHistory, setEmergencyHistory] = useState([
     {
@@ -108,6 +113,40 @@ const PatientDashboard = ({ goBack }) => {
   ]);
 
   useEffect(() => {
+    if (showEmergencyForm && startLocation) {
+      const fetchNearbyHospitals = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            alert('Please log in to access nearby hospitals.');
+            return;
+          }
+
+          const response = await axios.get('http://localhost:8000/api/nearby-hospitals/', {
+            params: {
+              lat: startLocation.lat,
+              lon: startLocation.lng
+            },
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          console.log(response.data.message)
+          if (response.data.message === "No") {
+            setNearbyHospitals([]);
+          } else {
+            setNearbyHospitals(response.data);
+          }
+        } catch (error) {
+          console.error('Error fetching nearby hospitals:', error);
+          alert('Failed to fetch nearby hospitals. Please try manually selecting a destination.');
+        }
+      };
+      fetchNearbyHospitals();
+    }
+  }, [showEmergencyForm, startLocation]);
+
+  useEffect(() => {
     if (showEmergencyForm) {
       const style = document.createElement('style');
       style.textContent = '.pac-container { z-index: 1400 !important; }';
@@ -117,6 +156,8 @@ const PatientDashboard = ({ goBack }) => {
       };
     }
   }, [showEmergencyForm]);
+
+
   useEffect(() => {
     if (showProfileModal) {
       const token = localStorage.getItem('token');
@@ -607,21 +648,60 @@ const PatientDashboard = ({ goBack }) => {
               </Box>
               {startLocation && <Typography mt={1}>Selected: {startLocation.name}</Typography>}
 
-              <Typography variant="subtitle1" sx={{ mt: 2 }}>Destination</Typography>
+              <Box mt={2}>
+                <Typography variant="subtitle1">Nearby Hospitals</Typography>
+                {startLocation ? (
+                  nearbyHospitals.length > 0 ? (
+                    <Box sx={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      <List>
+                        {nearbyHospitals.map((hospital) => (
+                          <ListItem
+                            button
+                            key={hospital.id}
+                            onClick={() => setDestinationLocation({
+                              lat: hospital.latitude,
+                              lng: hospital.longitude,
+                              name: hospital.name,
+                            })}
+                            sx={{
+                              backgroundColor: destinationLocation && destinationLocation.name === hospital.name ? 'grey.200' : 'inherit',
+                              borderRadius: 1,
+                              mb: 1,
+                            }}
+                          >
+                            <ListItemText
+                              primary={hospital.name}
+                              secondary={`${hospital.address} - ${hospital.distance} km`}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No nearby hospitals found within 10 km.
+                    </Typography>
+                  )
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Please select a start location first.
+                  </Typography>
+                )}
+              </Box>
+              <Typography variant="subtitle1" sx={{ mt: 2 }}>Manual Destination</Typography>
               <StandaloneSearchBox onLoad={onDestinationLoad} onPlacesChanged={onDestinationPlacesChanged}>
                 <input
                   type="text"
-                  placeholder="Enter destination"
+                  placeholder="Enter destination manually"
                   style={{
                     width: '100%',
                     padding: '10px',
                     boxSizing: 'border-box',
-                    zIndex: 1400 // Ensure input is above other elements
+                    zIndex: 1400
                   }}
                 />
               </StandaloneSearchBox>
               {destinationLocation && <Typography mt={1}>Selected: {destinationLocation.name}</Typography>}
-
               {/* Checkbox for current user or other */}
               {/* <FormControlLabel
                 control={
