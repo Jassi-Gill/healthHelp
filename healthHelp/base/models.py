@@ -1,7 +1,7 @@
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
+from django.core.exceptions import ValidationError
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
@@ -29,11 +29,22 @@ class Hospital(User):
     name = models.CharField(max_length=100)
     address = models.TextField()
     phone = models.CharField(max_length=20, blank=True, null=True)
-    capacity = models.IntegerField()
-    emergency_capacity = models.IntegerField()
+    total_beds = models.IntegerField(default=0)
+    available_beds = models.IntegerField(default=0)
+    oxygen_cylinders = models.IntegerField(default=0)
+    ventilators = models.IntegerField(default=0)
+    icu_beds = models.IntegerField(default=0)
+    total_patients = models.IntegerField(default=0)
+    doctors = models.IntegerField(default=0)
+    nurses = models.IntegerField(default=0)
+    ambulances = models.IntegerField(default=0)
+    emergency_rooms = models.IntegerField(default=0)
     hospital_active = models.BooleanField(default=True)
     hospital_email = models.EmailField(unique=True, blank=True, null=True)
 
+    def clean(self):
+        if self.available_beds > self.total_beds:
+            raise ValidationError('Available beds cannot exceed total beds.')
 class HospitalLocation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='locations')

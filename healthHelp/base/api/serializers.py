@@ -73,11 +73,15 @@ class UserSerializer(ModelSerializer):
         model = User
         fields = "__all__"
 
-
-class HospitalSerializer(ModelSerializer):
+class HospitalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hospital
         fields = "__all__"
+
+    def validate(self, data):
+        if data.get('available_beds', 0) > data.get('total_beds', 0):
+            raise serializers.ValidationError("Available beds cannot exceed total beds.")
+        return data
 
 
 class PatientSerializer(ModelSerializer):

@@ -27,7 +27,8 @@ from base.api.serializers import (
     PatientSerializer,
     MedicalHistorySerializer,
     DriverSerializer,
-    PoliceSerializer
+    PoliceSerializer,
+    HospitalSerializer
 )
 
 from math import radians, cos, sin, asin, sqrt
@@ -361,6 +362,32 @@ class PoliceProfileUpdateView(APIView):
                 )
 
         return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+class HospitalResourceUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        if request.user.user_type != 'hospital':
+            return Response({'error': 'This endpoint is only for hospitals'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            hospital = Hospital.objects.get(id=request.user.id)
+        except Hospital.DoesNotExist:
+            return Response({'error': 'Hospital profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = HospitalSerializer(hospital)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        if request.user.user_type != 'hospital':
+            return Response({'error': 'This endpoint is only for hospitals'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            hospital = Hospital.objects.get(id=request.user.id)
+        except Hospital.DoesNotExist:
+            return Response({'error': 'Hospital profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = HospitalSerializer(hospital, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Resources updated successfully'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class DriverStatusView(APIView):
     # permission_classes = [IsAuthenticated]
     # authentication_classes = [JWTAuthentication]

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Box,
   Container,
@@ -28,37 +29,92 @@ import {
   Healing as HealingIcon
 } from '@mui/icons-material';
 
-// Initial resource state with detailed hospital information
-const initialResources = {
-  totalBeds: 200,
-  availableBeds: 120,
-  oxygenCylinders: 80,
-  ventilators: 25,
-  icuBeds: 30,
-  totalPatients: 150,
-  doctors: 50,
-  nurses: 80,
-  ambulances: 10,
-  emergencyRooms: 12
-};
-
-// Updated component to accept onGoBack prop for navigation
 const ViewAllResources = ({ onGoBack }) => {
-  const [resources, setResources] = useState(initialResources);
+  const [resources, setResources] = useState({
+    totalBeds: 0,
+    availableBeds: 0,
+    oxygenCylinders: 0,
+    ventilators: 0,
+    icuBeds: 0,
+    totalPatients: 0,
+    doctors: 0,
+    nurses: 0,
+    ambulances: 0,
+    emergencyRooms: 0
+  });
 
-  // Handler to update resources by increasing or decreasing the value
+  useEffect(() => {
+    const fetchResources = async () => {
+      const token = localStorage.getItem('token'); // Adjust based on your auth setup
+      try {
+        const response = await axios.get('http://localhost:8000/api/hospital/resources/', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = response.data;
+        const camelCaseData = {};
+        Object.entries(data).forEach(([key, value]) => {
+          const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+          if (['totalBeds', 'availableBeds', 'oxygenCylinders', 'ventilators', 'icuBeds', 'totalPatients', 'doctors', 'nurses', 'ambulances', 'emergencyRooms'].includes(camelKey)) {
+            camelCaseData[camelKey] = value;
+          }
+        });
+        setResources(camelCaseData);
+      } catch (error) {
+        console.error('Error fetching resources:', error);
+      }
+    };
+    fetchResources();
+  }, []);
+
   const updateResource = (key, delta) => {
-    setResources((prev) => ({ ...prev, [key]: Math.max(0, prev[key] + delta) }));
+    setResources((prev) => {
+      const newValue = Math.max(0, prev[key] + delta);
+      if (key === 'availableBeds' && newValue > prev.totalBeds) {
+        return prev; // Prevent availableBeds from exceeding totalBeds
+      }
+      return { ...prev, [key]: newValue };
+    });
   };
 
-  // Handler for slider change
   const handleSliderChange = (key, value) => {
-    setResources((prev) => ({ ...prev, [key]: value }));
+    setResources((prev) => {
+      if (key === 'availableBeds' && value > prev.totalBeds) {
+        return prev; // Prevent availableBeds from exceeding totalBeds
+      }
+      return { ...prev, [key]: value };
+    });
+  };
+
+  const handleSave = async () => {
+    if (resources.availableBeds > resources.totalBeds) {
+      alert('Available beds cannot exceed total beds.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const dataToSend = {};
+    Object.entries(resources).forEach(([key, value]) => {
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      dataToSend[snakeKey] = value;
+    });
+    try {
+      const response = await axios.put('http://localhost:8000/api/hospital/resources/', dataToSend, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('Resources updated:', response.data);
+      alert('Resources updated successfully');
+    } catch (error) {
+      console.error('Error updating resources:', error);
+      alert('Failed to update resources');
+    }
   };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
-      {/* Top AppBar */}
       <AppBar position="static">
         <Toolbar>
           <IconButton edge="start" color="inherit" onClick={onGoBack}>
@@ -73,7 +129,6 @@ const ViewAllResources = ({ onGoBack }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Header Section */}
       <Box sx={{ py: 4, bgcolor: 'primary.light' }}>
         <Container>
           <Paper elevation={3} sx={{ p: 4, textAlign: 'center', bgcolor: 'white' }}>
@@ -87,10 +142,8 @@ const ViewAllResources = ({ onGoBack }) => {
         </Container>
       </Box>
 
-      {/* Main Content */}
       <Container sx={{ py: 6 }}>
         <Grid container spacing={4}>
-          {/* Summary Cards Section */}
           <Grid item xs={12}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
@@ -146,7 +199,6 @@ const ViewAllResources = ({ onGoBack }) => {
 
           <Divider sx={{ width: '100%', my: 4 }} />
 
-          {/* Detailed Resource Management Section */}
           <Grid item xs={12}>
             <Typography variant="h5" gutterBottom>
               Resource Details
@@ -196,10 +248,9 @@ const ViewAllResources = ({ onGoBack }) => {
 
           <Divider sx={{ width: '100%', my: 4 }} />
 
-          {/* Staff and Ambulance Section */}
           <Grid item xs={12}>
             <Typography variant="h5" gutterBottom>
-              Staff &amp; Emergency Support
+              Staff & Emergency Support
             </Typography>
           </Grid>
           <Grid item xs={12} md={6}>
@@ -229,7 +280,7 @@ const ViewAllResources = ({ onGoBack }) => {
             <Card elevation={2}>
               <CardHeader
                 title="Emergency Services"
-                subheader="Ambulances &amp; Emergency Rooms"
+                subheader="Ambulances & Emergency Rooms"
                 avatar={<HealingIcon color="error" fontSize="large" />}
               />
               <CardContent>
@@ -249,9 +300,11 @@ const ViewAllResources = ({ onGoBack }) => {
             </Card>
           </Grid>
 
-          {/* Final Action Button - Updated to use the onGoBack prop */}
           <Grid item xs={12} textAlign="center" sx={{ mt: 4 }}>
-            <Button variant="contained" color="primary" size="large" onClick={onGoBack}>
+            <Button variant="contained" color="primary" size="large" onClick={handleSave} sx={{ mr: 2 }}>
+              Save Changes
+            </Button>
+            <Button variant="contained" color="secondary" size="large" onClick={onGoBack}>
               Back to Dashboard
             </Button>
           </Grid>
