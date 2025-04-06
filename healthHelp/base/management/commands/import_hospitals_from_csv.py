@@ -1,12 +1,12 @@
 import csv
 from django.core.management.base import BaseCommand
 from base.models import Hospital, HospitalLocation
-
+# python manage.py import_hospitals_from_csv hospitals_assam.csv
 class Command(BaseCommand):
     help = 'Import hospitals from CSV file and create/update Hospital and HospitalLocation objects'
 
     def add_arguments(self, parser):
-        parser.add_argument('csv_file', type=str, help=r'D:\VOLDER\PROJECTS\healthHelp\healthHelp\hospitals_assam.csv')
+        parser.add_argument('csv_file', type=str, help='Path to File')
 
     def handle(self, *args, **kwargs):
         csv_file_path = kwargs['csv_file']
