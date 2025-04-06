@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from google.cloud import vision
 from django_filters.rest_framework import DjangoFilterBackend
+
 # import face_recognition
 from PIL import Image
 import numpy as np
@@ -21,7 +22,8 @@ from .models import (
     Hospital,
     Police,
     HospitalLocation,
-    PatientTreatment
+    PatientTreatment,
+    MobileNumber,
 )
 from base.api.serializers import (
     EmergencyRequestSerializer,
@@ -54,6 +56,7 @@ def haversine(lon1, lat1, lon2, lat2):
 
 class NearbyHospitalsView(APIView):
     permission_classes = []
+
     def get(self, request, *args, **kwargs):
         lat = request.query_params.get("lat")
         lon = request.query_params.get("lon")
@@ -96,10 +99,7 @@ class NearbyHospitalsView(APIView):
         nearby_hospitals.sort(key=lambda x: x["distance"])
 
         if len(nearby_hospitals) == 0:
-            return Response(
-                {'message': 'No'},
-                status=status.HTTP_200_OK
-            )
+            return Response({"message": "No"}, status=status.HTTP_200_OK)
 
         return Response(nearby_hospitals, status=status.HTTP_200_OK)
 
@@ -252,6 +252,8 @@ class PatientProfileUpdateView(APIView):
         patient.last_name = request.data.get("last_name", patient.last_name)
         patient.gender = request.data.get("gender", patient.gender)
         patient.address = request.data.get("address", patient.address)
+        patient.age = request.data.get("age", patient.age)
+        patient.blood_group = request.data.get("blood_group", patient.blood_group)
 
         if request.data.get("delete_face_image") == "true":
             if patient.face_image:
@@ -261,6 +263,17 @@ class PatientProfileUpdateView(APIView):
             patient.face_image = request.FILES["face_image"]
 
         patient.save()
+
+        if "primary_mobile_number" in request.data:
+            mobile_number = request.data["primary_mobile_number"]
+            primary_mobile = patient.mobile_numbers.filter(is_primary=True).first()
+            if primary_mobile:
+                primary_mobile.mobile_number = mobile_number
+                primary_mobile.save()
+            else:
+                MobileNumber.objects.create(
+                    user=patient, mobile_number=mobile_number, is_primary=True
+                )
 
         if "currentPassword" in request.data and "newPassword" in request.data:
             if request.user.check_password(request.data["currentPassword"]):
@@ -291,103 +304,130 @@ class PatientProfileUpdateView(APIView):
                     document=data.get("file"),
                 )
 
-        return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
-    
+        return Response(
+            {"message": "Profile updated successfully"}, status=status.HTTP_200_OK
+        )
+
+
 class PoliceProfileUpdateView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
     def get(self, request, *args, **kwargs):
-        if request.user.user_type != 'police':
+        if request.user.user_type != "police":
             return Response(
-                {'error': 'This endpoint is only for police'},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "This endpoint is only for police"},
+                status=status.HTTP_403_FORBIDDEN,
             )
         try:
             police = request.user.police
         except AttributeError:
             return Response(
-                {'error': 'Police profile not found for this user'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Police profile not found for this user"},
+                status=status.HTTP_404_NOT_FOUND,
             )
-        serializer = PoliceSerializer(police, context={'request': request})
+        serializer = PoliceSerializer(police, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, *args, **kwargs):
-        if request.user.user_type != 'police':
+        if request.user.user_type != "police":
             return Response(
-                {'error': 'This endpoint is only for police'},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "This endpoint is only for police"},
+                status=status.HTTP_403_FORBIDDEN,
             )
         try:
             police = request.user.police
         except AttributeError:
             return Response(
-                {'error': 'Police profile not found for this user'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Police profile not found for this user"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         # Handle document deletions
-        if request.data.get('delete_badge_document') == 'true':
+        if request.data.get("delete_badge_document") == "true":
             if police.badge_document:
                 police.badge_document.delete(save=False)
             police.badge_document = None
 
         # Update police fields
-        police.username = request.data.get('username', police.username)
-        police.email = request.data.get('email', police.email)
-        police.first_name = request.data.get('first_name', police.first_name)
-        police.last_name = request.data.get('last_name', police.last_name)
-        police.gender = request.data.get('gender', police.gender) if(request.data.get('gender')) else None
+        police.username = request.data.get("username", police.username)
+        police.email = request.data.get("email", police.email)
+        police.first_name = request.data.get("first_name", police.first_name)
+        police.last_name = request.data.get("last_name", police.last_name)
+        police.gender = (
+            request.data.get("gender", police.gender)
+            if (request.data.get("gender"))
+            else None
+        )
 
-        police.rank = request.data.get('rank', police.rank)
-        police.station_name = request.data.get('station_name', police.station_name)
+        police.rank = request.data.get("rank", police.rank)
+        police.station_name = request.data.get("station_name", police.station_name)
 
         # Handle file uploads
-        if 'badge_document' in request.FILES:
-            police.badge_document = request.FILES['badge_document']
+        if "badge_document" in request.FILES:
+            police.badge_document = request.FILES["badge_document"]
 
         police.save()
 
         # Handle password change
-        if 'currentPassword' in request.data and 'newPassword' in request.data:
-            if request.user.check_password(request.data['currentPassword']):
-                request.user.set_password(request.data['newPassword'])
+        if "currentPassword" in request.data and "newPassword" in request.data:
+            if request.user.check_password(request.data["currentPassword"]):
+                request.user.set_password(request.data["newPassword"])
                 request.user.save()
                 update_session_auth_hash(request, request.user)
             else:
                 return Response(
-                    {'error': 'Current password is incorrect'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {"error": "Current password is incorrect"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Profile updated successfully"}, status=status.HTTP_200_OK
+        )
+
+
 class HospitalResourceUpdateView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        if request.user.user_type != 'hospital':
-            return Response({'error': 'This endpoint is only for hospitals'}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.user_type != "hospital":
+            return Response(
+                {"error": "This endpoint is only for hospitals"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             hospital = Hospital.objects.get(id=request.user.id)
         except Hospital.DoesNotExist:
-            return Response({'error': 'Hospital profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Hospital profile not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         serializer = HospitalSerializer(hospital)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request):
-        if request.user.user_type != 'hospital':
-            return Response({'error': 'This endpoint is only for hospitals'}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.user_type != "hospital":
+            return Response(
+                {"error": "This endpoint is only for hospitals"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             hospital = Hospital.objects.get(id=request.user.id)
         except Hospital.DoesNotExist:
-            return Response({'error': 'Hospital profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Hospital profile not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         serializer = HospitalSerializer(hospital, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'Resources updated successfully'}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Resources updated successfully"}, status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class DriverStatusView(APIView):
     # permission_classes = [IsAuthenticated]
     # authentication_classes = [JWTAuthentication]
@@ -444,6 +484,7 @@ class HospitalStatusView(APIView):
                 {
                     "hospital_active": hospital.hospital_active,
                     "status": "available" if hospital.hospital_active else "offline",
+                    "id": str(hospital.id),
                 },
                 status=status.HTTP_200_OK,
             )
@@ -544,23 +585,26 @@ class EmergencyRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
     # filter_backends = [DjangoFilterBackend]
-    # filterset_fields = ['status']  
+    # filterset_fields = ['status']
 
     def get_queryset(self):
 
         queryset = super().get_queryset()
 
         user = self.request.user
-        
-        if user.is_authenticated and hasattr(user, 'user_type') and user.user_type == 'hospital':
+
+        if (
+            user.is_authenticated
+            and hasattr(user, "user_type")
+            and user.user_type == "hospital"
+        ):
             queryset = queryset.filter(hospital=user)
-            
-        
+
         return queryset
 
     def perform_create(self, serializer):
         user = self.request.user
-        if user.is_authenticated and hasattr(user, 'user_type'):
+        if user.is_authenticated and hasattr(user, "user_type"):
             if user.user_type == "patient":
                 try:
                     patient = user.patient  # Access the Patient profile
@@ -568,9 +612,12 @@ class EmergencyRequestViewSet(viewsets.ModelViewSet):
                     print("Patient User Saved", patient.id)
                     # return serializer
                 except AttributeError:
-                    print("Patient not found in perform create in emergencyRequestViewSet", AttributeError)
+                    print(
+                        "Patient not found in perform create in emergencyRequestViewSet",
+                        AttributeError,
+                    )
             else:
-                serializer.save() # Non-patient users (e.g., anonymous or other types) leave patient as null
+                serializer.save()  # Non-patient users (e.g., anonymous or other types) leave patient as null
         else:
             serializer.save()  # Unauthenticated users leave patient as null
 
@@ -630,14 +677,25 @@ class EmergencyRequestViewSet(viewsets.ModelViewSet):
         )
 
 
-
 class PatientTreatmentViewSet(viewsets.ModelViewSet):
     queryset = PatientTreatment.objects.all()
     serializer_class = PatientTreatmentSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["emergency_request"]
 
     def perform_create(self, serializer):
-        if self.request.user.user_type == 'hospital':
-            serializer.save(hospital=self.request.user)
+        if (
+            self.request.user.is_authenticated
+            and self.request.user.user_type == "hospital"
+        ):
+            try:
+                hospital = Hospital.objects.get(id=self.request.user.id)
+                serializer.save(hospital=hospital)
+            except Hospital.DoesNotExist:
+                print(
+                    "Error Create Perform PatientTreatmentViewSet",
+                    Hospital.DoesNotExist,
+                )
         else:
-            serializer.save()
+            print("Only for hospital User Type Create Perform PatientTreatmentViewSet")

@@ -59,6 +59,7 @@ const HospitalDashboard = () => {
     severity: 'info',
   });
   const [treatmentFormOpen, setTreatmentFormOpen] = useState(false);
+  const [hospitalId, setHospitalId] = useState(null);
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const initialTreatmentFormData = {
     date: '',
@@ -77,7 +78,6 @@ const HospitalDashboard = () => {
     patient_gender: '', // Initialize to empty string
     patient_contact: '',
     patient_blood_type: '', // Initialize to empty string
-    allergies: '',
     medical_history: '',
     // Vital Signs (nested object)
     vital_signs: {
@@ -115,6 +115,7 @@ const HospitalDashboard = () => {
           },
         });
         setOnDuty(response.data.hospital_active);
+        setHospitalId(response.data.id);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching police status:', error);
@@ -149,12 +150,11 @@ const HospitalDashboard = () => {
           emergency_type: emergency.emergency_type,
           status: emergency.status,
           patient: emergency.patient, // Preserve patient data for the form
-          // Add other fields as needed
-          
+          hospital: emergency.hospital, // Add other fields as needed
+
         }));
-        console.log(response.data);
+        // console.log(response.data);
         setActiveEmergencies(transformedEmergencies);
-        console.log('Transformed Emergencies:', transformedEmergencies);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching active emergencies:', error);
@@ -279,26 +279,118 @@ const HospitalDashboard = () => {
     setShowResources(false);
   };
 
-  const handleOpenTreatmentForm = (emergency) => {
+  const handleOpenTreatmentForm = async (emergency) => {
+    if (!emergency.patient) {
+      setSnackbar({
+        open: true,
+        message: 'Cannot fill treatment form: No patient associated with this emergency',
+        severity: 'warning',
+      });
+      return;
+    }
     setSelectedEmergency(emergency);
-    const patient = emergency.patient || {};
-    setTreatmentFormData({
-      ...initialTreatmentFormData,
-      // Emergency details
-      emergency_type: emergency.emergency_type || '',
-      status: emergency.status || '',
-      location: emergency.start_location_name || '',
-      request_date: emergency.created_at || '', // Add created_at if needed
-      // Patient details
-      patient_name: patient ? `${patient.first_name} ${patient.last_name}` : '',
-      patient_gender: patient.gender || '',
-      patient_contact: patient.mobile_numbers?.[0]?.mobile_number || '', // Assuming primary mobile number
-      allergies: patient.allergies || '', // Add if Patient model is extended
-      medical_history: patient.medical_histories?.map(history => history.description).join('; ') || '',
-      // Document URLs (for display, not submission)
-      face_image_url: patient.face_image_url || '',
-      insurance_document_url: patient.insurance_document_url || '',
-    });
+
+    try {
+      const token = localStorage.getItem('token');
+      // Fetch existing PatientTreatment for this emergency
+      const response = await axios.get(
+        `http://localhost:8000/api/patient-treatments/?emergency_request=${emergency.id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const patient = emergency.patient || {};
+      const primaryMobile = patient.mobile_numbers?.find(m => m.is_primary)?.mobile_number || '';
+
+      if (response.data.length > 0) {
+        // If a treatment exists, use it to populate the form
+        const existingTreatment = response.data[0];
+        setTreatmentFormData({
+          ...initialTreatmentFormData,
+          admission_date: existingTreatment.admission_date.slice(0, 16), // Adjust format for datetime-local
+          discharge_date: existingTreatment.discharge_date
+            ? existingTreatment.discharge_date.slice(0, 16)
+            : '',
+          diagnosis: existingTreatment.diagnosis || '',
+          treatment_details: existingTreatment.treatment_details || '',
+          follow_up_required: existingTreatment.follow_up_required || false,
+          medications: existingTreatment.medications_administered || '',
+          procedures_performed: existingTreatment.procedures_performed || '',
+          doctor_assigned: existingTreatment.doctor_assigned || '',
+          nurse_assigned: existingTreatment.nurse_assigned || '',
+          follow_up_date: existingTreatment.follow_up_date || '',
+          follow_up_instructions: existingTreatment.follow_up_instructions || '',
+          emergency_contact_name: existingTreatment.emergency_contact_name || '',
+          emergency_contact_phone: existingTreatment.emergency_contact_phone || '',
+          insurance_provider: existingTreatment.insurance_provider || '',
+          insurance_policy_number: existingTreatment.insurance_policy_number || '',
+          // Parse vital signs (assuming it's a string like "BP: 120/80, HR: 72")
+          vital_signs: {
+            blood_pressure: existingTreatment.vital_signs?.match(/BP: (\d+\/\d+)/)?.[1] || '',
+            heart_rate: existingTreatment.vital_signs?.match(/HR: (\d+)/)?.[1] || '',
+            respiratory_rate: existingTreatment.vital_signs?.match(/RR: (\d+)/)?.[1] || '',
+            temperature: existingTreatment.vital_signs?.match(/Temp: ([\d.]+)/)?.[1] || '',
+            oxygen_saturation: existingTreatment.vital_signs?.match(/SpO2: (\d+)/)?.[1] || '',
+          },
+          // Emergency and patient details (as before)
+          emergency_type: emergency.emergency_type || '',
+          status: emergency.status || '',
+          location: emergency.start_location.name || '',
+          request_date: emergency.created_at || '',
+          patient_name: patient ? `${patient.first_name} ${patient.last_name}` : '',
+          patient_age: patient.age || '',
+          patient_gender: patient.gender || '',
+          patient_blood_type: patient.blood_group || '',
+          patient_contact: primaryMobile,
+          medical_history: patient.medical_histories?.map(history => history.description).join('; ') || '',
+          face_image_url: patient.face_image_url || '',
+          insurance_document_url: patient.insurance_document_url || '',
+        });
+      } else {
+        // No existing treatment, use defaults
+        setTreatmentFormData({
+          ...initialTreatmentFormData,
+          emergency_type: emergency.emergency_type || '',
+          status: emergency.status || '',
+          location: emergency.start_location.name || '',
+          request_date: emergency.created_at || '',
+          patient_name: patient ? `${patient.first_name} ${patient.last_name}` : '',
+          patient_age: patient.age || '',
+          patient_gender: patient.gender || '',
+          patient_blood_type: patient.blood_group || '',
+          patient_contact: primaryMobile,
+          medical_history: patient.medical_histories?.map(history => history.description).join('; ') || '',
+          face_image_url: patient.face_image_url || '',
+          insurance_document_url: patient.insurance_document_url || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching existing treatment:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to load existing treatment data',
+        severity: 'error',
+      });
+      // Fallback to default values if the fetch fails
+      const patient = emergency.patient || {};
+      const primaryMobile = patient.mobile_numbers?.find(m => m.is_primary)?.mobile_number || '';
+      setTreatmentFormData({
+        ...initialTreatmentFormData,
+        emergency_type: emergency.emergency_type || '',
+        status: emergency.status || '',
+        location: emergency.start_location.name || '',
+        request_date: emergency.created_at || '',
+        patient_name: patient ? `${patient.first_name} ${patient.last_name}` : '',
+        patient_age: patient.age || '',
+        patient_gender: patient.gender || '',
+        patient_blood_type: patient.blood_group || '',
+        patient_contact: primaryMobile,
+        medical_history: patient.medical_histories?.map(history => history.description).join('; ') || '',
+        face_image_url: patient.face_image_url || '',
+        insurance_document_url: patient.insurance_document_url || '',
+      });
+    }
     setTreatmentFormOpen(true);
   };
 
@@ -329,14 +421,27 @@ const HospitalDashboard = () => {
   };
 
   const handleSubmitTreatmentForm = async () => {
-    // Construct vital_signs string from individual fields
+    if (!treatmentFormData.diagnosis || !treatmentFormData.treatment_details) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in Diagnosis and Treatment Details',
+        severity: 'warning',
+      });
+      return;
+    }
+
     const vitalSigns = `BP: ${treatmentFormData.vital_signs?.blood_pressure || ''}, HR: ${treatmentFormData.vital_signs?.heart_rate || ''}, RR: ${treatmentFormData.vital_signs?.respiratory_rate || ''}, Temp: ${treatmentFormData.vital_signs?.temperature || ''}°C, SpO2: ${treatmentFormData.vital_signs?.oxygen_saturation || ''}%`;
 
     const formData = {
-      patient: selectedEmergency.patient?.id || null,  // Assumes patient info is included in emergency data
+      hospital: hospitalId,
+      patient: selectedEmergency.patient?.id || null,
       emergency_request: selectedEmergency.id,
-      admission_date: treatmentFormData.admission_date || new Date().toISOString(),
-      discharge_date: treatmentFormData.discharge_date || null,
+      admission_date: treatmentFormData.admission_date
+        ? new Date(treatmentFormData.admission_date).toISOString()
+        : new Date().toISOString(),
+      discharge_date: treatmentFormData.discharge_date
+        ? new Date(treatmentFormData.discharge_date).toISOString()
+        : null,
       diagnosis: treatmentFormData.diagnosis || '',
       treatment_details: treatmentFormData.treatment_details || '',
       follow_up_required: treatmentFormData.follow_up_required || false,
@@ -355,20 +460,48 @@ const HospitalDashboard = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:8000/api/patient-treatments/', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSnackbar({
-        open: true,
-        message: 'Treatment form submitted successfully',
-        severity: 'success',
-      });
+      // Check if a treatment already exists
+      const checkResponse = await axios.get(
+        `http://localhost:8000/api/patient-treatments/?emergency_request=${selectedEmergency.id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (checkResponse.data.length > 0) {
+        // Update existing treatment
+        const existingTreatmentId = checkResponse.data[0].id;
+        await axios.patch(
+          `http://localhost:8000/api/patient-treatments/${existingTreatmentId}/`,
+          formData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setSnackbar({
+          open: true,
+          message: 'Treatment form updated successfully',
+          severity: 'success',
+        });
+      } else {
+        // Create new treatment
+        await axios.post('http://localhost:8000/api/patient-treatments/', formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSnackbar({
+          open: true,
+          message: 'Treatment form submitted successfully',
+          severity: 'success',
+        });
+      }
       handleCloseTreatmentForm();
     } catch (error) {
       console.error('Error submitting treatment form:', error);
       setSnackbar({
         open: true,
-        message: 'Failed to submit treatment form',
+        message: error.response
+          ? `Failed to submit: ${JSON.stringify(error.response.data)}`
+          : 'Failed to submit treatment form',
         severity: 'error',
       });
     }
@@ -512,7 +645,7 @@ const HospitalDashboard = () => {
                       <TableBody>
                         {activeEmergencies.map((emergency) => (
                           <TableRow key={emergency.id}>
-                            <TableCell>{emergency.start_location_name || 'N/A'}</TableCell>
+                            <TableCell>{emergency.start_location.name || 'N/A'}</TableCell>
                             <TableCell>{emergency.emergency_type || 'Unknown'}</TableCell>
                             <TableCell>{emergency.status}</TableCell>
                             <TableCell>
@@ -625,7 +758,7 @@ const HospitalDashboard = () => {
       <Modal open={treatmentFormOpen} onClose={handleCloseTreatmentForm} aria-labelledby="treatment-form-title">
         <Paper sx={{ p: 4, maxWidth: 1000, mx: 'auto', mt: 5, maxHeight: '80vh', overflowY: 'auto' }}>
           <Typography id="treatment-form-title" variant="h6" component="h2">
-            Fill Treatment Form for Emergency {selectedEmergency?.id}
+            Fill Treatment Form for Emergency
           </Typography>
           <Grid container spacing={2} sx={{ mt: 2 }}>
             {/* Emergency Details */}
@@ -642,17 +775,18 @@ const HospitalDashboard = () => {
                 disabled
               />
             </Grid>
-            <Grid item xs={6}>
+            {/* <Grid item xs={6}>
               <TextField
-                label="Request Date & Time"
+                label="Request Date"
                 type="datetime-local"
                 fullWidth
                 name="request_date"
                 value={treatmentFormData.request_date}
                 onChange={handleTreatmentFormChange}
                 InputLabelProps={{ shrink: true }}
+                disabled
               />
-            </Grid>
+            </Grid> */}
             <Grid item xs={6}>
               <TextField
                 label="Status"
@@ -663,7 +797,7 @@ const HospitalDashboard = () => {
                 disabled
               />
             </Grid>
-            <Grid item xs={6}>
+            {/* <Grid item xs={6}>
               <TextField
                 label="Response Time (minutes)"
                 type="number"
@@ -672,7 +806,7 @@ const HospitalDashboard = () => {
                 value={treatmentFormData.response_time}
                 onChange={handleTreatmentFormChange}
               />
-            </Grid>
+            </Grid> */}
             <Grid item xs={12}>
               <TextField
                 label="Location"
@@ -695,6 +829,7 @@ const HospitalDashboard = () => {
                 name="patient_name"
                 value={treatmentFormData.patient_name}
                 onChange={handleTreatmentFormChange}
+                disabled
               />
             </Grid>
             <Grid item xs={3}>
@@ -705,6 +840,7 @@ const HospitalDashboard = () => {
                 name="patient_age"
                 value={treatmentFormData.patient_age}
                 onChange={handleTreatmentFormChange}
+                disabled
               />
             </Grid>
             <Grid item xs={3}>
@@ -715,6 +851,7 @@ const HospitalDashboard = () => {
                   name="patient_gender"
                   value={treatmentFormData.patient_gender}
                   onChange={handleTreatmentFormChange}
+                  disabled
                 >
                   <MenuItem value="Male">Male</MenuItem>
                   <MenuItem value="Female">Female</MenuItem>
@@ -729,6 +866,7 @@ const HospitalDashboard = () => {
                 name="patient_contact"
                 value={treatmentFormData.patient_contact}
                 onChange={handleTreatmentFormChange}
+                disabled
               />
             </Grid>
             <Grid item xs={6}>
@@ -739,6 +877,7 @@ const HospitalDashboard = () => {
                   name="patient_blood_type"
                   value={treatmentFormData.patient_blood_type}
                   onChange={handleTreatmentFormChange}
+                  disabled
                 >
                   <MenuItem value="A+">A+</MenuItem>
                   <MenuItem value="A-">A-</MenuItem>
@@ -750,17 +889,6 @@ const HospitalDashboard = () => {
                   <MenuItem value="O-">O-</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Allergies"
-                multiline
-                rows={2}
-                fullWidth
-                name="allergies"
-                value={treatmentFormData.allergies}
-                onChange={handleTreatmentFormChange}
-              />
             </Grid>
             <Grid item xs={12}>
               <Typography>Medical History</Typography>

@@ -9,6 +9,7 @@ from base.models import (
     EmergencyRequest,
     MedicalHistory,
     PatientTreatment,
+    MobileNumber,
 )
 
 
@@ -86,10 +87,24 @@ class HospitalSerializer(serializers.ModelSerializer):
         return data
 
 
+class MobileNumberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MobileNumber
+        fields = ['id', 'mobile_number', 'is_primary']
+
 class PatientSerializer(ModelSerializer):
     face_image_url = serializers.SerializerMethodField()
     insurance_document_url = serializers.SerializerMethodField()
     medical_histories = MedicalHistorySerializer(many=True, read_only=True)  # Fixed
+    mobile_numbers = MobileNumberSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Patient
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'gender', 'address',
+            'insurance_document', 'face_image', 'age', 'blood_group',
+            'face_image_url', 'insurance_document_url', 'medical_histories', 'mobile_numbers'
+        ]
 
     class Meta:
         model = Patient
@@ -182,3 +197,4 @@ class PatientTreatmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PatientTreatment
         fields = '__all__'
+        read_only_fields = ['hospital']

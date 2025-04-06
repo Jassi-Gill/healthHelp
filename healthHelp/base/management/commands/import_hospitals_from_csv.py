@@ -39,8 +39,6 @@ class Command(BaseCommand):
                             "name": name,
                             "address": address,
                             "user_type": "hospital",
-                            "capacity": 100,
-                            "emergency_capacity": 50,
                             "hospital_active": True,
                         }
                     )

@@ -282,7 +282,7 @@ const PoliceDashboard = () => {
       .catch(error => {
         console.error('Error updating profile:', error);
         if (error.response) {
-          console.log('Validation errors:', error.response.data);
+          // console.log('Validation errors:', error.response.data);
           let errorMessage = 'Please correct the following errors:\n';
           for (const [field, messages] of Object.entries(error.response.data)) {
             errorMessage += `${field}: ${messages.join(', ')}\n`;

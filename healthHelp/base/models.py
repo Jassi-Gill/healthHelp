@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
 
+
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
@@ -50,6 +51,17 @@ class Driver(User):
     )
     rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
     driver_active = models.BooleanField(default=True)
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, blank=True, null=True
+    )
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, blank=True, null=True
+    )
+    vehicle_type = models.CharField(
+        max_length=10,
+        choices=[("ambulance", "Ambulance"), ("small_taxi", "Small Taxi"), ("small_taxi", "Big Taxi")],
+        default="offline",
+    )
 
 
 class Hospital(User):
@@ -71,7 +83,9 @@ class Hospital(User):
 
     def clean(self):
         if self.available_beds > self.total_beds:
-            raise ValidationError('Available beds cannot exceed total beds.')
+            raise ValidationError("Available beds cannot exceed total beds.")
+
+
 class HospitalLocation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     hospital = models.ForeignKey(
@@ -101,9 +115,26 @@ class Patient(User):
         upload_to="insurance_documents/", blank=True, null=True
     )
     face_image = models.ImageField(upload_to="face_images/", blank=True, null=True)
+    age = models.IntegerField(blank=True, null=True)
+    blood_group = models.CharField(
+        max_length=3,
+        choices=[
+            ("A+", "A+"),
+            ("A-", "A-"),
+            ("B+", "B+"),
+            ("B-", "B-"),
+            ("AB+", "AB+"),
+            ("AB-", "AB-"),
+            ("O+", "O+"),
+            ("O-", "O-"),
+        ],
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         db_table = "patient"
+
 
 
 class MedicalHistory(models.Model):

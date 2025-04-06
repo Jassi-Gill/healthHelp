@@ -105,7 +105,7 @@ const ViewAllResources = ({ onGoBack }) => {
           'Content-Type': 'application/json',
         },
       });
-      console.log('Resources updated:', response.data);
+      // console.log('Resources updated:', response.data);
       alert('Resources updated successfully');
     } catch (error) {
       console.error('Error updating resources:', error);

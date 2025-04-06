@@ -65,6 +65,7 @@ const PatientDashboard = ({ goBack }) => {
   const [showVerificationModal, setShowVerificationModal] = useState(false); // For photo capture
   const [photo, setPhoto] = useState(null); // For storing captured photo
   const [isForCurrentUser, setIsForCurrentUser] = useState(true); // New state for checkbox
+  const [primaryMobileNumber, setPrimaryMobileNumber] = useState('');
   const webcamRef = useRef(null);
 
 
@@ -177,8 +178,12 @@ const PatientDashboard = ({ goBack }) => {
             firstName: data.first_name,
             lastName: data.last_name,
             gender: data.gender,
-            address: data.address
+            address: data.address,
+            age: data.age,
+            blood_group: data.blood_group,
           });
+          const primaryMobile = data.mobile_numbers.find(m => m.is_primary);
+          setPrimaryMobileNumber(primaryMobile ? primaryMobile.mobile_number : '');
           setFaceImageUrl(data.face_image_url);
           setInsuranceDocumentUrl(data.insurance_document_url);
           setExistingMedicalHistory(data.medical_histories);  // Changed from medical_history to medical_histories
@@ -325,7 +330,7 @@ const PatientDashboard = ({ goBack }) => {
         }
       }
       );
-      console.log('Emergency Created:', response.data);
+      // console.log('Emergency Created:', response.data);
       setShowEmergencyForm(false);
       setShowEmergencyCalling(true);
       setStartLocation(null);
@@ -476,6 +481,9 @@ const PatientDashboard = ({ goBack }) => {
     formData.append('last_name', profileData.lastName);
     formData.append('gender', profileData.gender);
     formData.append('address', profileData.address);
+    formData.append('age', profileData.age || '');
+    formData.append('blood_group', profileData.blood_group || '');
+    formData.append('primary_mobile_number', primaryMobileNumber);
     if (faceImageFile) formData.append('face_image', faceImageFile);
     if (insuranceFile) formData.append('insurance_document', insuranceFile);
     if (currentPassword && newPassword) {
@@ -856,6 +864,46 @@ const PatientDashboard = ({ goBack }) => {
                     <MenuItem value="Other">Other</MenuItem>
                   </Select>
                 </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Age"
+                  type="number"
+                  name="age"
+                  value={profileData.age || ''}
+                  onChange={handleProfileChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="blood-group-label">Blood Group</InputLabel>
+                  <Select
+                    labelId="blood-group-label"
+                    name="blood_group"
+                    value={profileData.blood_group || ''}
+                    onChange={handleProfileChange}
+                    label="Blood Group"
+                  >
+                    <MenuItem value="A+">A+</MenuItem>
+                    <MenuItem value="A-">A-</MenuItem>
+                    <MenuItem value="B+">B+</MenuItem>
+                    <MenuItem value="B-">B-</MenuItem>
+                    <MenuItem value="AB+">AB+</MenuItem>
+                    <MenuItem value="AB-">AB-</MenuItem>
+                    <MenuItem value="O+">O+</MenuItem>
+                    <MenuItem value="O-">O-</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Primary Mobile Number"
+                  name="primaryMobileNumber"
+                  value={primaryMobileNumber}
+                  onChange={(e) => setPrimaryMobileNumber(e.target.value)}
+                />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
