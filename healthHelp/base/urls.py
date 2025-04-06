@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from base.views import (
     PatientProfileUpdateView, EmergencyRequestViewSet, MedicalHistoryViewSet,
-    DriverStatusView, PoliceStatusView, HospitalStatusView, DriverProfileUpdateView
+    DriverStatusView, PoliceStatusView, HospitalStatusView, DriverProfileUpdateView, NearbyHospitalsView
 )
 from django.conf import settings
 from django.conf.urls.static import static
@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/driver/status/', DriverStatusView.as_view(), name='driver-status'),
     path('api/police/status/', PoliceStatusView.as_view(), name='police-status'),
     path('api/hospital/status/', HospitalStatusView.as_view(), name='hospital-status'),
+    path('api/nearby-hospitals/', NearbyHospitalsView.as_view(), name='nearby-hospitals'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
