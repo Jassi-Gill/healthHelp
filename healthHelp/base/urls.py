@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from base.views import (
     PatientProfileUpdateView, EmergencyRequestViewSet, MedicalHistoryViewSet,
     DriverStatusView, PoliceStatusView, HospitalStatusView, DriverProfileUpdateView,
-    PoliceProfileUpdateView
+    PoliceProfileUpdateView, NearbyHospitalsView
 )
 from django.conf import settings
 from django.conf.urls.static import static
