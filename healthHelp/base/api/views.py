@@ -14,7 +14,7 @@ from .serializers import (
 from django.db import transaction
 from datetime import datetime, timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import Q
+import re
 from django.contrib.auth import authenticate
 
 
@@ -66,12 +66,16 @@ def login(request):
             user_data.update(
                 {
                     "address": patient.address,
-                    }
+                }
             )
 
         elif user_type == "driver":
             driver = authenticated_user.driver
-            license_expiry = driver.license_expiry.strftime("%Y-%m-%d") if driver.license_expiry else None
+            license_expiry = (
+                driver.license_expiry.strftime("%Y-%m-%d")
+                if driver.license_expiry
+                else None
+            )
             user_data.update(
                 {
                     "license_number": driver.license_number,
@@ -91,18 +95,20 @@ def login(request):
                 }
             )
 
-        elif user_type == 'hospital':
+        elif user_type == "hospital":
             hospital = authenticated_user.hospital
-            user_data.update({
-                'name': hospital.name,
-                'address': hospital.address,
-                'phone': hospital.phone,
-                # 'capacity': hospital.capacity,
-                # 'emergency_capacity': hospital.emergency_capacity,
-                'hospital_active': hospital.hospital_active,
-                'hospital_email': hospital.hospital_email,
-                'hospital_active': hospital.is_active,  # User account status
-            })
+            user_data.update(
+                {
+                    "name": hospital.name,
+                    "address": hospital.address,
+                    "phone": hospital.phone,
+                    # 'capacity': hospital.capacity,
+                    # 'emergency_capacity': hospital.emergency_capacity,
+                    "hospital_active": hospital.hospital_active,
+                    "hospital_email": hospital.hospital_email,
+                    "hospital_active": hospital.is_active,  # User account status
+                }
+            )
 
         return Response(
             {
@@ -152,6 +158,41 @@ def getUsers(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def signup(request):
+    def is_strong_password(password):
+        if len(password) < 8:
+            return False
+        if not re.search(r"[A-Z]", password):  # Check for uppercase letter
+            return False
+        if not re.search(r"[a-z]", password):  # Check for lowercase letter
+            return False
+        if not re.search(r"\d", password):  # Check for digit
+            return False
+        if not re.search(
+            r"[!@#$%^&*(),.?\":{}|<>]", password
+        ):  # Check for special character
+            return False
+        return True
+    
+    def is_similar_to(str1, str2, threshold=0.6):
+        """
+        Check if str1 is similar to str2 by more than the threshold (default 60%).
+        Similarity is based on common characters divided by the length of the longer string.
+        """
+        # Convert strings to lowercase sets of characters for comparison
+        set1 = set(str1.lower())
+        set2 = set(str2.lower())
+        
+        # Find common characters
+        common_chars = len(set1.intersection(set2))
+        
+        # Use the length of the longer string as the denominator
+        max_length = max(len(str1), len(str2))
+        
+        # Calculate similarity percentage
+        similarity = common_chars / max_length if max_length > 0 else 0
+        
+        return similarity > threshold
+
     """
     Create a new user based on the user_type (patient, driver, hospital, police).
     """
@@ -165,6 +206,33 @@ def signup(request):
     if not all([username, email, password, user_type]):
         return Response(
             {"detail": "Please provide username, email, password, and user type."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if "@" not in email:
+        return Response(
+            {"detail": "Email must contain an '@' symbol."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Check if username already exists
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {"detail": "Username already exists."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Validate password strength
+    if not is_strong_password(password):
+        return Response(
+            {"detail": "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Check if password is too similar to username or email
+    if is_similar_to(password, username) or is_similar_to(password, email):
+        return Response(
+            {"detail": "Password is too similar to username or email. Please choose a stronger password."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -187,19 +255,19 @@ def signup(request):
     # Create user based on type
     try:
         with transaction.atomic():
-            if user_type == 'hospital':
+            if user_type == "hospital":
                 hospital = Hospital.objects.create_user(
                     username=username,
                     email=email,
                     password=password,
-                    user_type='hospital',
-                    name=request.data.get('name', f"{username}'s Hospital"),
-                    address=request.data.get('address', ''),
-                    phone=request.data.get('phone', ''),
+                    user_type="hospital",
+                    name=request.data.get("name", f"{username}'s Hospital"),
+                    address=request.data.get("address", ""),
+                    phone=request.data.get("phone", ""),
                     # capacity=request.data.get('capacity', 100),
                     # emergency_capacity=request.data.get('emergency_capacity', 20),
                     hospital_active=True,
-                    hospital_email=request.data.get('hospital_email', email)
+                    hospital_email=request.data.get("hospital_email", email),
                 )
                 serializer = HospitalSerializer(hospital)
 

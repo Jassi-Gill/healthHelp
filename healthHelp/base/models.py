@@ -51,17 +51,17 @@ class Driver(User):
     )
     rating = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True)
     driver_active = models.BooleanField(default=True)
-    latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, blank=True, null=True
-    )
-    longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, blank=True, null=True
-    )
-    vehicle_type = models.CharField(
-        max_length=10,
-        choices=[("ambulance", "Ambulance"), ("small_taxi", "Small Taxi"), ("small_taxi", "Big Taxi")],
-        default="offline",
-    )
+    # latitude = models.DecimalField(
+    #     max_digits=9, decimal_places=6, blank=True, null=True
+    # )
+    # longitude = models.DecimalField(
+    #     max_digits=9, decimal_places=6, blank=True, null=True
+    # )
+    # vehicle_type = models.CharField(
+    #     max_length=10,
+    #     choices=[("ambulance", "Ambulance"), ("small_taxi", "Small Taxi"), ("small_taxi", "Big Taxi")],
+    #     default="offline",
+    # )
 
 
 class Hospital(User):
